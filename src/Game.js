@@ -35,7 +35,7 @@ export class Game {
 
     this.starfield = new Starfield(this.scene);
     this.lighting = new Lighting(this.scene);
-    this.solarSystem = new SolarSystem(this.scene);
+    this.solarSystem = new SolarSystem(this.scene, { isMobile: this.isMobile });
 
     this.player = new Player();
     this.scene.add(this.player.mesh);

@@ -3,7 +3,7 @@ import { PLANETS } from '@/utils/Constants.js';
 import { CelestialBody } from '@/world/CelestialBody.js';
 
 export class SolarSystem {
-  constructor(scene) {
+  constructor(scene, { isMobile = false } = {}) {
     this.bodies = PLANETS.map(config => {
       const body = new CelestialBody(config);
       scene.add(body.mesh);
@@ -24,7 +24,7 @@ export class SolarSystem {
         const material = new THREE.LineBasicMaterial({
           color: 0xffffff,
           transparent: true,
-          opacity: 0.08,
+          opacity: isMobile ? 0.2 : 0.08,
         });
         scene.add(new THREE.Line(geometry, material));
       }
