@@ -99,6 +99,54 @@ export class CelestialBody {
     this.mesh.add(this.labelPivot);
     this._createLabel3D(config.name, config.radius, neonColor);
 
+    // Moons
+    this.moons = [];
+    if (config.moons) {
+      this.moonPivot = new THREE.Object3D();
+      this.mesh.add(this.moonPivot);
+
+      for (const moonConfig of config.moons) {
+        const moonGeo = new THREE.SphereGeometry(moonConfig.radius, 32, 32);
+        let moonMat;
+        if (moonConfig.texture) {
+          const tex = textureLoader.load(moonConfig.texture);
+          tex.colorSpace = THREE.SRGBColorSpace;
+          moonMat = new THREE.MeshStandardMaterial({
+            map: tex,
+            roughness: 0.8,
+            metalness: 0.1,
+          });
+        } else {
+          moonMat = new THREE.MeshStandardMaterial({
+            color: moonConfig.color,
+            roughness: 0.8,
+            metalness: 0.1,
+          });
+        }
+        const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+        const angle = Math.random() * Math.PI * 2;
+        moonMesh.position.set(
+          Math.cos(angle) * moonConfig.orbitRadius,
+          0,
+          Math.sin(angle) * moonConfig.orbitRadius
+        );
+        this.moonPivot.add(moonMesh);
+
+        const moonNeon = '#' + new THREE.Color(moonConfig.color).getHexString();
+        const moonLabelPivot = new THREE.Object3D();
+        moonMesh.add(moonLabelPivot);
+        this._createMoonLabel(moonConfig.name, moonConfig.radius, moonNeon, moonLabelPivot);
+
+        this.moons.push({
+          mesh: moonMesh,
+          orbitRadius: moonConfig.orbitRadius,
+          orbitSpeed: moonConfig.orbitSpeed,
+          angle,
+          labelPivot: moonLabelPivot,
+        });
+      }
+    }
+
     // Atmosphere glow for all non-emissive bodies
     if (!config.emissive) {
       const glowGeometry = new THREE.SphereGeometry(config.radius * 1.15, 32, 32);
@@ -190,6 +238,33 @@ export class CelestialBody {
     return texture;
   }
 
+  async _createMoonLabel(name, radius, neonColor, pivot) {
+    const font = await fontPromise;
+    const fontSize = Math.max(radius * 0.5, 1.2);
+    const depth = fontSize * 0.2;
+
+    const textGeo = new TextGeometry(name, {
+      font,
+      size: fontSize,
+      depth,
+      curveSegments: 4,
+      bevelEnabled: false,
+    });
+    textGeo.computeBoundingBox();
+    const bb = textGeo.boundingBox;
+    const centerOffsetX = -(bb.max.x - bb.min.x) / 2;
+
+    const mat = new THREE.MeshBasicMaterial({
+      color: neonColor,
+      transparent: true,
+      opacity: 0.7,
+    });
+
+    const textMesh = new THREE.Mesh(textGeo, mat);
+    textMesh.position.set(centerOffsetX, radius * 1.6, 0);
+    pivot.add(textMesh);
+  }
+
   async _createLabel3D(name, radius, neonColor) {
     const font = await fontPromise;
 
@@ -238,6 +313,25 @@ export class CelestialBody {
     if (this.labelPivot) {
       this.labelPivot.rotation.y -= this.rotationSpeed * dt;
       this.labelPivot.rotation.y += 0.4 * dt;
+    }
+
+    // Counter-rotate moon pivot against planet spin so moons orbit independently
+    if (this.moonPivot) {
+      this.moonPivot.rotation.y -= this.rotationSpeed * dt;
+    }
+
+    // Update moon positions
+    for (const moon of this.moons) {
+      moon.angle += moon.orbitSpeed * dt;
+      moon.mesh.position.set(
+        Math.cos(moon.angle) * moon.orbitRadius,
+        0,
+        Math.sin(moon.angle) * moon.orbitRadius
+      );
+      // Counter-rotate moon label against all parent rotations
+      if (moon.labelPivot) {
+        moon.labelPivot.rotation.y = -moon.angle;
+      }
     }
 
     if (this.distance > 0) {
