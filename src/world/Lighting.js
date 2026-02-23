@@ -4,7 +4,7 @@ export class Lighting {
   constructor(scene) {
     // Physically-correct PointLight needs high intensity to illuminate
     // objects hundreds of units away (falloff is 1/distance²)
-    this.sunLight = new THREE.PointLight(0xffffff, 5000000, 0);
+    this.sunLight = new THREE.PointLight(0xffffff, 2500000, 0);
     this.sunLight.position.set(0, 0, 0);
     scene.add(this.sunLight);
 
