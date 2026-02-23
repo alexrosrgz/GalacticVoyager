@@ -1,5 +1,6 @@
 export class HUD {
-  constructor() {
+  constructor(isMobile = false) {
+    this.isMobile = isMobile;
     const hud = document.getElementById('hud');
 
     hud.innerHTML = `
@@ -26,11 +27,19 @@ export class HUD {
 
   _injectStyles() {
     const style = document.createElement('style');
+
+    // On mobile: health top-left, speed top-right (below score)
+    const healthPos = this.isMobile
+      ? 'top: 20px; left: 20px;'
+      : 'bottom: 30px; left: 30px;';
+    const speedPos = this.isMobile
+      ? 'top: 50px; right: 20px;'
+      : 'bottom: 30px; right: 30px;';
+
     style.textContent = `
       #health-container {
         position: absolute;
-        bottom: 30px;
-        left: 30px;
+        ${healthPos}
         width: 200px;
         height: 20px;
         background: rgba(0, 0, 0, 0.6);
@@ -69,8 +78,7 @@ export class HUD {
       }
       #speed-display {
         position: absolute;
-        bottom: 30px;
-        right: 30px;
+        ${speedPos}
         color: rgba(255, 255, 255, 0.7);
         font-family: monospace;
         font-size: 14px;

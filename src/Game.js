@@ -12,24 +12,26 @@ import { HUD } from '@/ui/HUD.js';
 import { Minimap } from '@/ui/Minimap.js';
 import { MenuScreen } from '@/ui/MenuScreen.js';
 import { PROJECTILE_DAMAGE } from '@/utils/Constants.js';
+import { isMobileDevice } from '@/utils/DeviceDetect.js';
 
 export class Game {
   constructor() {
     this.state = 'menu';
     this.score = 0;
     this.menuAngle = 0;
+    this.isMobile = isMobileDevice();
     this.loop = this.loop.bind(this);
   }
 
   init() {
     const canvas = document.getElementById('game-canvas');
 
-    this.renderer = new Renderer(canvas);
+    this.renderer = new Renderer(canvas, this.isMobile);
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x000000);
     this.camera = new Camera();
     this.clock = new THREE.Clock();
-    this.input = new InputManager(canvas);
+    this.input = new InputManager(canvas, this.isMobile);
 
     this.starfield = new Starfield(this.scene);
     this.lighting = new Lighting(this.scene);
@@ -42,15 +44,17 @@ export class Game {
     this.projectileManager = new ProjectileManager(this.scene);
     this.enemyManager = new EnemyManager(this.scene);
 
-    this.hud = new HUD();
-    this.minimap = new Minimap();
-    this.menuScreen = new MenuScreen();
+    this.hud = new HUD(this.isMobile);
+    this.minimap = new Minimap(this.isMobile);
+    this.menuScreen = new MenuScreen(this.isMobile);
 
     this.menuScreen.onStart = () => this.startGame();
     this.menuScreen.onRestart = () => this.restart();
 
-    // Setup bloom post-processing
-    this.renderer.setupComposer(this.scene, this.camera.getCamera());
+    // Setup bloom post-processing (skipped on mobile for performance)
+    if (!this.isMobile) {
+      this.renderer.setupComposer(this.scene, this.camera.getCamera());
+    }
 
     // Start in menu state
     this.hud.hide();
@@ -67,13 +71,17 @@ export class Game {
     this.score = 0;
     this.menuScreen.hideAll();
     this.hud.show();
+    this.input.showTouchControls();
   }
 
   endGame() {
     this.state = 'gameover';
     this.hud.hide();
+    this.input.hideTouchControls();
     this.menuScreen.showGameOver(this.score);
-    document.exitPointerLock();
+    if (!this.isMobile) {
+      document.exitPointerLock();
+    }
   }
 
   restart() {

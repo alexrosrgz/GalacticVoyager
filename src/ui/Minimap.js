@@ -1,16 +1,20 @@
 export class Minimap {
-  constructor() {
-    this.size = 180;
+  constructor(isMobile = false) {
+    this.size = isMobile ? 120 : 180;
     this.range = 2000;
 
     const canvas = document.createElement('canvas');
     canvas.id = 'minimap';
     canvas.width = this.size;
     canvas.height = this.size;
+
+    const position = isMobile
+      ? 'top: 50px; left: 20px;'
+      : 'bottom: 60px; left: 30px;';
+
     canvas.style.cssText = `
       position: absolute;
-      bottom: 60px;
-      left: 30px;
+      ${position}
       width: ${this.size}px;
       height: ${this.size}px;
       border: 1px solid rgba(255, 255, 255, 0.2);

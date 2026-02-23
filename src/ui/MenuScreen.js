@@ -1,5 +1,6 @@
 export class MenuScreen {
-  constructor() {
+  constructor(isMobile = false) {
+    this.isMobile = isMobile;
     this.onStart = null;
     this.onRestart = null;
 
@@ -8,6 +9,10 @@ export class MenuScreen {
   }
 
   _createElements() {
+    const controlsText = this.isMobile
+      ? 'Joystick - Fly &nbsp;|&nbsp; Drag - Aim &nbsp;|&nbsp; Tap - Fire &nbsp;|&nbsp; Boost Button'
+      : 'WASD - Fly &nbsp;|&nbsp; Mouse - Aim &nbsp;|&nbsp; Click - Fire &nbsp;|&nbsp; Shift - Boost';
+
     // Start screen
     this.startScreen = document.createElement('div');
     this.startScreen.id = 'start-screen';
@@ -16,7 +21,7 @@ export class MenuScreen {
       <p class="subtitle">Defend the Solar System</p>
       <button id="start-btn">START MISSION</button>
       <p class="controls-info">
-        WASD - Fly &nbsp;|&nbsp; Mouse - Aim &nbsp;|&nbsp; Click - Fire &nbsp;|&nbsp; Shift - Boost
+        ${controlsText}
       </p>
     `;
     document.body.appendChild(this.startScreen);
@@ -80,6 +85,7 @@ export class MenuScreen {
         letter-spacing: 2px;
         transition: all 0.2s;
         pointer-events: auto;
+        touch-action: manipulation;
       }
       #start-btn:hover, #restart-btn:hover {
         background: #4488ff;
