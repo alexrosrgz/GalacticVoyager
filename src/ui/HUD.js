@@ -28,12 +28,15 @@ export class HUD {
   _injectStyles() {
     const style = document.createElement('style');
 
-    // On mobile: health top-left, speed top-right (below score)
+    // On mobile: stack health, score, speed in top-left (away from joystick & buttons)
     const healthPos = this.isMobile
-      ? 'top: 20px; left: 20px;'
+      ? 'top: 10px; left: 10px;'
       : 'bottom: 30px; left: 30px;';
+    const scorePos = this.isMobile
+      ? 'top: 36px; left: 10px;'
+      : 'top: 20px; right: 30px;';
     const speedPos = this.isMobile
-      ? 'top: 50px; right: 20px;'
+      ? 'top: 58px; left: 10px;'
       : 'bottom: 30px; right: 30px;';
 
     style.textContent = `
@@ -69,11 +72,10 @@ export class HUD {
       }
       #score-display {
         position: absolute;
-        top: 20px;
-        right: 30px;
+        ${scorePos}
         color: #fff;
         font-family: monospace;
-        font-size: 18px;
+        font-size: ${this.isMobile ? '14px' : '18px'};
         text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
       }
       #speed-display {

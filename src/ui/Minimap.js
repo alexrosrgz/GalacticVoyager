@@ -9,7 +9,7 @@ export class Minimap {
     canvas.height = this.size;
 
     const position = isMobile
-      ? 'top: 50px; left: 20px;'
+      ? 'top: 10px; right: 10px;'
       : 'bottom: 60px; left: 30px;';
 
     canvas.style.cssText = `
