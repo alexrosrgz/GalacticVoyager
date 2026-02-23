@@ -65,15 +65,13 @@ export class CelestialBody {
     this.radius = config.radius;
 
     if (config.rings) {
-      const ringGeometry = new THREE.RingGeometry(
-        config.radius * 1.3,
-        config.radius * 2.0,
-        64
-      );
+      const innerR = config.radius * 1.1;
+      const outerR = config.radius * 2.3;
+      const ringGeometry = new THREE.RingGeometry(innerR, outerR, 128);
+
+      // Remap UVs so U goes 0→1 from inner to outer edge
       const pos = ringGeometry.attributes.position;
       const uv = ringGeometry.attributes.uv;
-      const innerR = config.radius * 1.3;
-      const outerR = config.radius * 2.0;
       for (let i = 0; i < pos.count; i++) {
         const x = pos.getX(i);
         const y = pos.getY(i);
@@ -81,28 +79,17 @@ export class CelestialBody {
         uv.setXY(i, (r - innerR) / (outerR - innerR), 0.5);
       }
 
-      let ringMaterial;
-      if (config.ringTexture) {
-        const ringTex = textureLoader.load(config.ringTexture);
-        ringTex.colorSpace = THREE.SRGBColorSpace;
-        ringMaterial = new THREE.MeshStandardMaterial({
-          map: ringTex,
-          alphaMap: ringTex,
-          side: THREE.DoubleSide,
-          transparent: true,
-          roughness: 0.8,
-        });
-      } else {
-        ringMaterial = new THREE.MeshStandardMaterial({
-          color: 0xaa9966,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.6,
-          roughness: 0.8,
-        });
-      }
+      // Procedural ring texture with band structure and Cassini Division
+      const ringTex = this._createRingTexture();
+      const ringMaterial = new THREE.MeshBasicMaterial({
+        map: ringTex,
+        side: THREE.DoubleSide,
+        transparent: true,
+      });
+
       const ring = new THREE.Mesh(ringGeometry, ringMaterial);
-      ring.rotation.x = Math.PI * 0.4;
+      // Saturn's axial tilt ~26.7°
+      ring.rotation.x = Math.PI * 0.5 - 0.466;
       this.mesh.add(ring);
     }
 
@@ -112,18 +99,95 @@ export class CelestialBody {
     this.mesh.add(this.labelPivot);
     this._createLabel3D(config.name, config.radius, neonColor);
 
-    // Atmosphere glow for non-emissive bodies
-    if (!config.emissive && config.radius > 5) {
+    // Atmosphere glow for all non-emissive bodies
+    if (!config.emissive) {
       const glowGeometry = new THREE.SphereGeometry(config.radius * 1.15, 32, 32);
       const glowMaterial = new THREE.MeshBasicMaterial({
         color: config.color,
         transparent: true,
-        opacity: 0.12,
+        opacity: 0.07,
         side: THREE.BackSide,
       });
       const glow = new THREE.Mesh(glowGeometry, glowMaterial);
       this.mesh.add(glow);
     }
+  }
+
+  _createRingTexture() {
+    const width = 1024;
+    const height = 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    // Ring structure (position 0→1 maps inner→outer edge):
+    //   D ring:  0.00–0.08  very faint
+    //   C ring:  0.08–0.30  dim, warm gray
+    //   B ring:  0.30–0.55  brightest, dense cream
+    //   Cassini: 0.55–0.60  near-empty gap
+    //   A ring:  0.60–0.85  moderate density
+    //   Encke:   0.72–0.73  thin gap in A ring
+    //   F ring:  0.92–0.95  thin faint outer ring
+
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data;
+
+    for (let x = 0; x < width; x++) {
+      const t = x / width; // 0→1 inner to outer
+      let r, g, b, a;
+
+      if (t < 0.08) {
+        // D ring — very faint
+        r = 140; g = 130; b = 110; a = 20;
+      } else if (t < 0.30) {
+        // C ring — dim, slightly transparent
+        const f = (t - 0.08) / 0.22;
+        r = 150 + f * 30; g = 140 + f * 25; b = 115 + f * 15;
+        a = 40 + f * 60;
+      } else if (t < 0.55) {
+        // B ring — brightest and densest
+        const f = (t - 0.30) / 0.25;
+        r = 210 + f * 15; g = 195 + f * 10; b = 160 - f * 10;
+        // Slight variation for texture
+        const noise = Math.sin(f * 40) * 10;
+        r += noise; g += noise * 0.7;
+        a = 180 + f * 40;
+      } else if (t < 0.60) {
+        // Cassini Division — dark gap
+        r = 50; g = 45; b = 40; a = 12;
+      } else if (t < 0.85) {
+        // A ring — moderate
+        const f = (t - 0.60) / 0.25;
+        r = 190 - f * 30; g = 175 - f * 25; b = 145 - f * 20;
+        const noise = Math.sin(f * 30) * 8;
+        r += noise; g += noise * 0.6;
+        a = 140 - f * 40;
+
+        // Encke gap
+        if (t > 0.72 && t < 0.73) {
+          a = 10;
+        }
+      } else if (t > 0.92 && t < 0.95) {
+        // F ring — thin outer ring
+        r = 170; g = 160; b = 140; a = 50;
+      } else {
+        // Empty space
+        r = 0; g = 0; b = 0; a = 0;
+      }
+
+      const i = x * 4;
+      data[i]     = Math.max(0, Math.min(255, r));
+      data[i + 1] = Math.max(0, Math.min(255, g));
+      data[i + 2] = Math.max(0, Math.min(255, b));
+      data[i + 3] = Math.max(0, Math.min(255, a));
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
   }
 
   async _createLabel3D(name, radius, neonColor) {
