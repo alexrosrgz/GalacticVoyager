@@ -13,6 +13,7 @@ import { Minimap } from '@/ui/Minimap.js';
 import { MenuScreen } from '@/ui/MenuScreen.js';
 import { PROJECTILE_DAMAGE } from '@/utils/Constants.js';
 import { isMobileDevice } from '@/utils/DeviceDetect.js';
+import { AudioManager } from '@/core/AudioManager.js';
 
 export class Game {
   constructor() {
@@ -44,6 +45,8 @@ export class Game {
     this.projectileManager = new ProjectileManager(this.scene);
     this.enemyManager = new EnemyManager(this.scene);
 
+    this.audio = new AudioManager();
+
     this.hud = new HUD(this.isMobile);
     this.minimap = new Minimap(this.isMobile);
     this.menuScreen = new MenuScreen(this.isMobile);
@@ -72,6 +75,9 @@ export class Game {
     this.menuScreen.hideAll();
     this.hud.show();
     this.input.showTouchControls();
+    this.audio.init();
+    this.audio.resume();
+    this.wasBoosting = false;
   }
 
   endGame() {
@@ -79,6 +85,7 @@ export class Game {
     this.hud.hide();
     this.input.hideTouchControls();
     this.menuScreen.showGameOver(this.score);
+    this.audio.stopEngine();
     if (!this.isMobile) {
       document.exitPointerLock();
     }
@@ -124,8 +131,24 @@ export class Game {
         this.player.updateTrail();
 
         if (this.input.isMouseDown() && this.input.pointerLocked) {
-          this.player.fire(this.projectileManager);
+          const fired = this.player.fire(this.projectileManager);
+          if (fired) this.audio.playLaser();
         }
+
+        // Boost sound on engage
+        const isBoosting = this.player.isThrusting &&
+          (this.input.isKeyDown('ShiftLeft') || this.input.isKeyDown('ShiftRight'));
+        if (isBoosting && !this.wasBoosting) {
+          this.audio.playBoost();
+        }
+        this.wasBoosting = isBoosting;
+
+        // Engine audio
+        this.audio.updateEngine(
+          this.player.isThrusting,
+          isBoosting,
+          this.player.getSpeed()
+        );
 
         this.camera.follow(this.player, dt);
         this.enemyManager.update(dt, this.player.mesh.position, this.projectileManager, this.score);
@@ -172,10 +195,12 @@ export class Game {
           this.score += 100;
           this.player.health = this.player.maxHealth;
           this.enemyManager.handleEnemyDeath(hit.enemy);
+          this.audio.playExplosion();
         }
       } else if (hit.type === 'player') {
         this.player.takeDamage(PROJECTILE_DAMAGE);
         this.camera.shake(2, 0.15);
+        this.audio.playDamage();
       }
       this.projectileManager.releaseProjectile(hit.projectile);
     }

@@ -172,7 +172,7 @@ export class Player {
   }
 
   fire(projectileManager) {
-    if (!this.canFire()) return;
+    if (!this.canFire()) return false;
 
     this.fireCooldown = PLAYER_FIRE_RATE;
 
@@ -189,6 +189,7 @@ export class Player {
 
     projectileManager.fire(leftOrigin, forward.clone(), 'player');
     projectileManager.fire(rightOrigin, forward.clone(), 'player');
+    return true;
   }
 
   takeDamage(amount) {
