@@ -28,7 +28,11 @@ export class SolarSystem {
 
       // Orbital path line for stars orbiting the barycenter
       if (config.distance > 0 && !config.parentStar) {
-        const line = this._createOrbitalLine(config.distance, ALPHA_CENTAURI_CENTER, isMobile);
+        const line = this._createOrbitalLine(config.distance, ALPHA_CENTAURI_CENTER, isMobile, {
+          eccentricity: config.eccentricity || 0,
+          reversed: config.orbitReversed || false,
+          tilt: config.orbitalTilt || 0,
+        });
         scene.add(line);
       }
       return body;
@@ -61,16 +65,20 @@ export class SolarSystem {
     }
   }
 
-  _createOrbitalLine(distance, center, isMobile) {
+  _createOrbitalLine(distance, center, isMobile, { eccentricity = 0, tilt = 0, reversed = false } = {}) {
     const segments = 128;
     const points = [];
+    const sign = reversed ? -1 : 1;
+    const e = eccentricity;
     for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      points.push(new THREE.Vector3(
-        center.x + Math.cos(angle) * distance,
-        0,
-        center.z + Math.sin(angle) * distance
-      ));
+      const theta = (i / segments) * Math.PI * 2;
+      const r = e > 0 ? distance * (1 - e * e) / (1 + e * Math.cos(theta)) : distance;
+      const xLocal = sign * r * Math.cos(theta);
+      const zLocal = sign * r * Math.sin(theta);
+      const x = center.x + xLocal;
+      const y = tilt ? zLocal * Math.sin(tilt) : 0;
+      const z = center.z + (tilt ? zLocal * Math.cos(tilt) : zLocal);
+      points.push(new THREE.Vector3(x, y, z));
     }
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
     const material = new THREE.LineBasicMaterial({

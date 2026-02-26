@@ -23,9 +23,9 @@ const NEON_COLORS = {
   Saturn:  '#ddcc88',
   Uranus:  '#88ddee',
   Neptune: '#7788ee',
-  'Rigil Kentaurus (α Cen A)': '#fff5aa',
-  'Toliman (α Cen B)': '#ffbb66',
-  'Proxima Centauri (α Cen C)': '#ff6644',
+  'Rigil Kentaurus (Alpha Cen A)': '#fff5aa',
+  'Toliman (Alpha Cen B)': '#ffd8a8',
+  'Proxima Centauri (Alpha Cen C)': '#ff7744',
   'Proxima b': '#66cc88',
   'Proxima d': '#cc9966',
   'Proxima c': '#8899cc',
@@ -74,6 +74,9 @@ export class CelestialBody {
     this.parentBody = null;
     this.systemOrigin = config.systemOrigin || { x: 0, y: 0, z: 0 };
     this.isStar = config.isStar || false;
+    this.eccentricity = config.eccentricity || 0;
+    this.orbitalTilt = config.orbitalTilt || 0;
+    this.orbitReversed = config.orbitReversed || false;
 
     if (config.rings) {
       const innerR = config.radius * 1.1;
@@ -347,20 +350,49 @@ export class CelestialBody {
 
     if (this.distance > 0) {
       this.orbitalAngle += this.orbitalSpeed * dt;
-      let baseX, baseZ;
-      if (this.parentBody) {
-        baseX = this.parentBody.mesh.position.x;
-        baseZ = this.parentBody.mesh.position.z;
+      const baseX = this.parentBody ? this.parentBody.mesh.position.x : this.systemOrigin.x;
+      const baseY = this.parentBody ? this.parentBody.mesh.position.y : 0;
+      const baseZ = this.parentBody ? this.parentBody.mesh.position.z : this.systemOrigin.z;
+
+      let r, theta;
+      if (this.eccentricity > 0) {
+        const e = this.eccentricity;
+        const M = this.orbitalAngle % (Math.PI * 2);
+        const E = this._solveKepler(M, e);
+        const cosE = Math.cos(E);
+        const sinE = Math.sin(E);
+        const denom = 1 - e * cosE;
+        theta = Math.atan2(Math.sqrt(1 - e * e) * sinE / denom, (cosE - e) / denom);
+        r = this.distance * (1 - e * cosE);
       } else {
-        baseX = this.systemOrigin.x;
-        baseZ = this.systemOrigin.z;
+        theta = this.orbitalAngle;
+        r = this.distance;
       }
-      this.mesh.position.x = baseX + Math.cos(this.orbitalAngle) * this.distance;
-      this.mesh.position.z = baseZ + Math.sin(this.orbitalAngle) * this.distance;
+
+      const sign = this.orbitReversed ? -1 : 1;
+      const xLocal = sign * r * Math.cos(theta);
+      const zLocal = sign * r * Math.sin(theta);
+
+      this.mesh.position.x = baseX + xLocal;
+      if (this.orbitalTilt) {
+        this.mesh.position.y = baseY + zLocal * Math.sin(this.orbitalTilt);
+        this.mesh.position.z = baseZ + zLocal * Math.cos(this.orbitalTilt);
+      } else {
+        this.mesh.position.y = baseY;
+        this.mesh.position.z = baseZ + zLocal;
+      }
     } else if (this.systemOrigin.x !== 0 || this.systemOrigin.z !== 0) {
       this.mesh.position.x = this.systemOrigin.x;
       this.mesh.position.z = this.systemOrigin.z;
     }
+  }
+
+  _solveKepler(M, e) {
+    let E = M;
+    for (let i = 0; i < 10; i++) {
+      E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    }
+    return E;
   }
 
   getInfo() {

@@ -33,44 +33,47 @@ export const PLANETS = [
 export const ALPHA_CENTAURI_CENTER = { x: 3950, y: 0, z: 0 };
 
 export const ALPHA_CENTAURI_BODIES = [
-  // Alpha Centauri A — G2V yellow star, 1.22 solar radii
+  // Alpha Centauri A — G2V yellow star, 1.22 solar radii, 1.52 L☉
   {
-    name: 'Rigil Kentaurus (α Cen A)', radius: 70, distance: 150,
-    color: 0xfff5e0, emissive: true, orbitalSpeed: 0.005,
-    rotationSpeed: 0.05, isStar: true,
-    lightIntensity: 1800000, lightColor: 0xfff8ee,
+    name: 'Rigil Kentaurus (Alpha Cen A)', radius: 98, distance: 270,
+    color: 0xfff4ea, emissive: true, orbitalSpeed: 0.04,
+    rotationSpeed: 0.05, initialAngle: 0, isStar: true,
+    eccentricity: 0.5179,
+    lightIntensity: 3800000, lightColor: 0xfff4ea,
   },
-  // Alpha Centauri B — K1V orange star, 0.86 solar radii, starts opposite side
+  // Alpha Centauri B — K1V orange star, 0.86 solar radii, 0.50 L☉, opposite side of barycenter
   {
-    name: 'Toliman (α Cen B)', radius: 50, distance: 150,
-    color: 0xffaa55, emissive: true, orbitalSpeed: 0.005,
-    rotationSpeed: 0.06, initialAngle: Math.PI, isStar: true,
-    lightIntensity: 1200000, lightColor: 0xffcc88,
+    name: 'Toliman (Alpha Cen B)', radius: 69, distance: 330,
+    color: 0xffd8a8, emissive: true, orbitalSpeed: 0.04,
+    rotationSpeed: 0.06, initialAngle: 0, orbitReversed: true, isStar: true,
+    eccentricity: 0.5179,
+    lightIntensity: 1250000, lightColor: 0xffd8a8,
   },
-  // Proxima Centauri — M5.5Ve red dwarf, 0.15 solar radii (scaled from 13000 AU to 800 units)
+  // Proxima Centauri — M5.5Ve red dwarf, 0.15 solar radii, 0.0017 L☉, inclined orbit
   {
-    name: 'Proxima Centauri (α Cen C)', radius: 10, distance: 500,
-    color: 0xff4422, emissive: true, orbitalSpeed: 0.001,
+    name: 'Proxima Centauri (Alpha Cen C)', radius: 12, distance: 500,
+    color: 0xff6633, emissive: true, orbitalSpeed: 0.005,
     rotationSpeed: 0.08, isStar: true,
-    lightIntensity: 50000, lightColor: 0xff6644,
+    orbitalTilt: 0.52,
+    lightIntensity: 4250, lightColor: 0xff6633,
   },
   // Proxima b — habitable zone rocky world, ~1.17 Earth masses
   {
-    name: 'Proxima b', radius: 8.5, distance: 30,
-    color: 0x448866, emissive: false, orbitalSpeed: 0.8,
-    rotationSpeed: 0.2, parentStar: 'Proxima Centauri (α Cen C)',
+    name: 'Proxima b', radius: 8.5, distance: 50,
+    color: 0x448866, emissive: false, orbitalSpeed: 0.6,
+    rotationSpeed: 0.2, parentStar: 'Proxima Centauri (Alpha Cen C)',
   },
   // Proxima d — very close hot world, ~0.26 Earth masses
   {
-    name: 'Proxima d', radius: 4, distance: 18,
+    name: 'Proxima d', radius: 4, distance: 30,
     color: 0xcc8855, emissive: false, orbitalSpeed: 1.2,
-    rotationSpeed: 0.15, parentStar: 'Proxima Centauri (α Cen C)',
+    rotationSpeed: 0.15, parentStar: 'Proxima Centauri (Alpha Cen C)',
   },
   // Proxima c (candidate) — cold super-Earth/mini-Neptune, ~7 Earth masses
   {
-    name: 'Proxima c', radius: 12, distance: 80,
-    color: 0x6688bb, emissive: false, orbitalSpeed: 0.05,
-    rotationSpeed: 0.3, parentStar: 'Proxima Centauri (α Cen C)',
+    name: 'Proxima c', radius: 12, distance: 300,
+    color: 0x6688bb, emissive: false, orbitalSpeed: 0.015,
+    rotationSpeed: 0.3, parentStar: 'Proxima Centauri (Alpha Cen C)',
   },
 ];
 
