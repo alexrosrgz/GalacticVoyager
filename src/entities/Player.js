@@ -78,8 +78,8 @@ export class Player {
       uniform float uTime;
       varying float vGradient;
       void main() {
-        float alpha = pow(vGradient, 0.7) * uOpacity;
-        vec3 col = mix(uColorCool, uColorHot, pow(vGradient, 0.5));
+        float alpha = pow(1.0 - vGradient, 0.7) * uOpacity;
+        vec3 col = mix(uColorHot, uColorCool, pow(vGradient, 0.5));
         float flicker = 1.0 + sin(uTime * 30.0) * 0.06 + sin(uTime * 47.0) * 0.04;
         alpha *= flicker;
         gl_FragColor = vec4(col, alpha);
@@ -104,7 +104,7 @@ export class Player {
       side: THREE.DoubleSide,
     });
     this.outerCone = new THREE.Mesh(
-      new THREE.ConeGeometry(1.25, 5, 16, 4, true),
+      new THREE.ConeGeometry(1.25, 5, 16, 12, true),
       this.outerConeMat
     );
     this.outerCone.rotation.x = Math.PI / 2;
@@ -129,7 +129,7 @@ export class Player {
       side: THREE.DoubleSide,
     });
     this.innerCone = new THREE.Mesh(
-      new THREE.ConeGeometry(0.5, 4, 12, 4, true),
+      new THREE.ConeGeometry(0.5, 4, 12, 12, true),
       this.innerConeMat
     );
     this.innerCone.rotation.x = Math.PI / 2;
@@ -152,12 +152,12 @@ export class Player {
     this.nozzleGlow = new THREE.Sprite(new THREE.SpriteMaterial({
       map: new THREE.CanvasTexture(c),
       transparent: true,
-      opacity: 0.15,
+      opacity: 0,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       toneMapped: false,
     }));
-    this.nozzleGlow.scale.set(2.5, 2.5, 1);
+    this.nozzleGlow.scale.set(0.5, 0.5, 1);
     this.nozzleGlow.position.z = 6;
     this.mesh.add(this.nozzleGlow);
 
@@ -202,12 +202,18 @@ export class Player {
     this._exhaustPoints.frustumCulled = false;
     this.mesh.add(this._exhaustPoints);
 
+    // Store original cone vertex positions for curve deformation
+    this._outerOrigPos = new Float32Array(this.outerCone.geometry.getAttribute('position').array);
+    this._innerOrigPos = new Float32Array(this.innerCone.geometry.getAttribute('position').array);
+    this._dirHistory = [];
+    this._dirHistoryMax = 30;
+
     // Initial idle state
-    this._coneScaleY = 0.5;
-    this._coneScaleXZ = 0.7;
-    this._outerOpacity = 0.15;
-    this._innerOpacity = 0.12;
-    this._nozzleOpacity = 0.15;
+    this._coneScaleY = 0.1;
+    this._coneScaleXZ = 0.1;
+    this._outerOpacity = 0;
+    this._innerOpacity = 0;
+    this._nozzleOpacity = 0;
     this._applyConeState();
   }
 
@@ -219,6 +225,114 @@ export class Player {
     this.outerCone.position.z = 6 + (this._outerConeBaseLen * this._coneScaleY) / 2;
     this.innerCone.position.z = 6 + (this._innerConeBaseLen * this._coneScaleY) / 2;
     this.nozzleGlow.material.opacity = this._nozzleOpacity;
+  }
+
+  _updateDirHistory() {
+    const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion);
+    this._dirHistory.unshift(backward);
+    if (this._dirHistory.length > this._dirHistoryMax) this._dirHistory.pop();
+  }
+
+  _curveCones() {
+    if (this._dirHistory.length < 2) {
+      this._restoreOriginalPositions(this.outerCone, this._outerOrigPos);
+      this._restoreOriginalPositions(this.innerCone, this._innerOrigPos);
+      return;
+    }
+    this._applyCurveToMesh(this.outerCone, this._outerOrigPos, this._outerConeBaseLen, 17, 13);
+    this._applyCurveToMesh(this.innerCone, this._innerOrigPos, this._innerConeBaseLen, 13, 13);
+  }
+
+  _applyCurveToMesh(coneMesh, origPosArray, baseHeight, vertsPerRing, numRings) {
+    const posAttr = coneMesh.geometry.getAttribute('position');
+    const sY = this._coneScaleY;
+    const sXZ = this._coneScaleXZ;
+    const worldLength = baseHeight * sY;
+
+    const hist = this._dirHistory;
+    const numSteps = hist.length;
+    const stepLen = worldLength / numSteps;
+
+    // Inverse quaternion: world → mesh-local
+    const invQuat = this.mesh.quaternion.clone().conjugate();
+    const qx = invQuat.x, qy = invQuat.y, qz = invQuat.z, qw = invQuat.w;
+
+    for (let ring = 0; ring < numRings; ring++) {
+      const t = 1 - ring / (numRings - 1); // 1 at tip (ring 0), 0 at base
+
+      if (t < 0.001) {
+        // Base ring — no offset, restore original
+        const start = ring * vertsPerRing * 3;
+        for (let v = 0; v < vertsPerRing; v++) {
+          const idx = start + v * 3;
+          posAttr.array[idx]     = origPosArray[idx];
+          posAttr.array[idx + 1] = origPosArray[idx + 1];
+          posAttr.array[idx + 2] = origPosArray[idx + 2];
+        }
+        continue;
+      }
+
+      // Integrate curved spine through direction history
+      const stepsToTake = t * numSteps;
+      const fullSteps = Math.min(Math.floor(stepsToTake), numSteps);
+      let cx = 0, cy = 0, cz = 0;
+
+      for (let s = 0; s < fullSteps; s++) {
+        cx += hist[s].x * stepLen;
+        cy += hist[s].y * stepLen;
+        cz += hist[s].z * stepLen;
+      }
+
+      // Fractional last step
+      const frac = stepsToTake - fullSteps;
+      if (fullSteps < numSteps && frac > 0) {
+        cx += hist[fullSteps].x * stepLen * frac;
+        cy += hist[fullSteps].y * stepLen * frac;
+        cz += hist[fullSteps].z * stepLen * frac;
+      }
+
+      // Straight position along current backward direction
+      const straightDist = t * worldLength;
+      const sx = hist[0].x * straightDist;
+      const sy = hist[0].y * straightDist;
+      const sz = hist[0].z * straightDist;
+
+      // World offset
+      let dx = cx - sx;
+      let dy = cy - sy;
+      let dz = cz - sz;
+
+      // World → parent-local (apply inverse quaternion manually)
+      const ix = qw * dx + qy * dz - qz * dy;
+      const iy = qw * dy + qz * dx - qx * dz;
+      const iz = qw * dz + qx * dy - qy * dx;
+      const iw = -qx * dx - qy * dy - qz * dz;
+      const lx = ix * qw + iw * -qx + iy * -qz - iz * -qy;
+      const ly = iy * qw + iw * -qy + iz * -qx - ix * -qz;
+      const lz = iz * qw + iw * -qz + ix * -qy - iy * -qx;
+
+      // Parent-local → geometry space (accounts for cone rotation.x = PI/2 and scale)
+      const gx = lx / sXZ;
+      const gy = lz / sY;
+      const gz = -ly / sXZ;
+
+      // Apply offset to each vertex in this ring
+      const start = ring * vertsPerRing * 3;
+      for (let v = 0; v < vertsPerRing; v++) {
+        const idx = start + v * 3;
+        posAttr.array[idx]     = origPosArray[idx]     + gx;
+        posAttr.array[idx + 1] = origPosArray[idx + 1] + gy;
+        posAttr.array[idx + 2] = origPosArray[idx + 2] + gz;
+      }
+    }
+
+    posAttr.needsUpdate = true;
+  }
+
+  _restoreOriginalPositions(coneMesh, origArray) {
+    const posAttr = coneMesh.geometry.getAttribute('position');
+    posAttr.array.set(origArray);
+    posAttr.needsUpdate = true;
   }
 
   update(dt, input) {
@@ -254,6 +368,9 @@ export class Player {
       );
       this.mesh.quaternion.premultiply(rollQuat);
     }
+
+    // Record direction history for cone curving
+    this._updateDirHistory();
 
     // Thrust
     const forward = this.getForward();
@@ -295,7 +412,7 @@ export class Player {
     let targetGlowOp, targetGlowScale, targetDispOuter, targetDispInner;
     if (this.isBoosting) {
       targetOuterOp = 0.45; targetInnerOp = 0.4;
-      targetScaleY = 1.6; targetScaleXZ = 1.2;
+      targetScaleY = 6.0; targetScaleXZ = 0.8;
       targetGlowOp = 0.5; targetGlowScale = 4.5;
       targetDispOuter = 0.25; targetDispInner = 0.15;
     } else if (this.isThrusting) {
@@ -304,10 +421,10 @@ export class Player {
       targetGlowOp = 0.35; targetGlowScale = 3.5;
       targetDispOuter = 0.15; targetDispInner = 0.08;
     } else {
-      targetOuterOp = 0.15; targetInnerOp = 0.12;
-      targetScaleY = 0.5; targetScaleXZ = 0.7;
-      targetGlowOp = 0.15; targetGlowScale = 2.5;
-      targetDispOuter = 0.05; targetDispInner = 0.03;
+      targetOuterOp = 0; targetInnerOp = 0;
+      targetScaleY = 0.1; targetScaleXZ = 0.1;
+      targetGlowOp = 0; targetGlowScale = 0.5;
+      targetDispOuter = 0; targetDispInner = 0;
     }
 
     const rate = 1 - Math.pow(0.001, dt);
@@ -328,6 +445,7 @@ export class Player {
       this.innerConeMat.uniforms.uDisplace.value, targetDispInner, rate);
 
     this._applyConeState();
+    this._curveCones();
 
     // Exhaust particles — drift backward in local space, fade, respawn
     const posAttr = this._exhaustPoints.geometry.getAttribute('position');
@@ -409,16 +527,21 @@ export class Player {
     this.fireCooldown = 0;
 
     // Reset engine effects to idle state
-    this._coneScaleY = 0.5;
-    this._coneScaleXZ = 0.7;
-    this._outerOpacity = 0.15;
-    this._innerOpacity = 0.12;
-    this._nozzleOpacity = 0.15;
+    this._coneScaleY = 0.1;
+    this._coneScaleXZ = 0.1;
+    this._outerOpacity = 0;
+    this._innerOpacity = 0;
+    this._nozzleOpacity = 0;
     this._engineTime = 0;
-    this.nozzleGlow.scale.set(2.5, 2.5, 1);
+    this.nozzleGlow.scale.set(0.5, 0.5, 1);
     this._applyConeState();
     for (let i = 0; i < this._exhaustData.length; i++) {
       this._exhaustData[i].life = this._exhaustData[i].maxLife;
     }
+
+    // Clear direction history and restore cone geometry
+    this._dirHistory.length = 0;
+    this._restoreOriginalPositions(this.outerCone, this._outerOrigPos);
+    this._restoreOriginalPositions(this.innerCone, this._innerOrigPos);
   }
 }
