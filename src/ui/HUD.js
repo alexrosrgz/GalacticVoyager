@@ -126,6 +126,28 @@ export class HUD {
     document.head.appendChild(style);
   }
 
+  showSystemName(name) {
+    if (!this.systemLabel) {
+      const label = document.createElement('div');
+      label.id = 'system-name';
+      label.style.cssText = `
+        position: absolute;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: rgba(255, 255, 255, 0.5);
+        font-family: monospace;
+        font-size: 12px;
+        letter-spacing: 2px;
+        text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+        pointer-events: none;
+      `;
+      document.getElementById('hud').appendChild(label);
+      this.systemLabel = label;
+    }
+    this.systemLabel.textContent = name;
+  }
+
   update(health, maxHealth, score, speed) {
     const pct = (health / maxHealth) * 100;
     this.healthBar.style.width = pct + '%';

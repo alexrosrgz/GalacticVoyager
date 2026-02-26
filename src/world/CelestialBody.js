@@ -23,6 +23,12 @@ const NEON_COLORS = {
   Saturn:  '#ddcc88',
   Uranus:  '#88ddee',
   Neptune: '#7788ee',
+  'Rigil Kentaurus (α Cen A)': '#fff5aa',
+  'Toliman (α Cen B)': '#ffbb66',
+  'Proxima Centauri (α Cen C)': '#ff6644',
+  'Proxima b': '#66cc88',
+  'Proxima d': '#cc9966',
+  'Proxima c': '#8899cc',
 };
 
 export class CelestialBody {
@@ -30,7 +36,8 @@ export class CelestialBody {
     this.name = config.name;
     this.distance = config.distance;
     this.orbitalSpeed = config.orbitalSpeed;
-    this.orbitalAngle = Math.random() * Math.PI * 2;
+    this.orbitalAngle = config.initialAngle !== undefined
+      ? config.initialAngle : Math.random() * Math.PI * 2;
 
     const geometry = new THREE.SphereGeometry(config.radius, 64, 64);
 
@@ -64,6 +71,9 @@ export class CelestialBody {
     this.rotationSpeed = config.rotationSpeed;
     this.radius = config.radius;
     this.color = config.color;
+    this.parentBody = null;
+    this.systemOrigin = config.systemOrigin || { x: 0, y: 0, z: 0 };
+    this.isStar = config.isStar || false;
 
     if (config.rings) {
       const innerR = config.radius * 1.1;
@@ -337,8 +347,19 @@ export class CelestialBody {
 
     if (this.distance > 0) {
       this.orbitalAngle += this.orbitalSpeed * dt;
-      this.mesh.position.x = Math.cos(this.orbitalAngle) * this.distance;
-      this.mesh.position.z = Math.sin(this.orbitalAngle) * this.distance;
+      let baseX, baseZ;
+      if (this.parentBody) {
+        baseX = this.parentBody.mesh.position.x;
+        baseZ = this.parentBody.mesh.position.z;
+      } else {
+        baseX = this.systemOrigin.x;
+        baseZ = this.systemOrigin.z;
+      }
+      this.mesh.position.x = baseX + Math.cos(this.orbitalAngle) * this.distance;
+      this.mesh.position.z = baseZ + Math.sin(this.orbitalAngle) * this.distance;
+    } else if (this.systemOrigin.x !== 0 || this.systemOrigin.z !== 0) {
+      this.mesh.position.x = this.systemOrigin.x;
+      this.mesh.position.z = this.systemOrigin.z;
     }
   }
 
@@ -348,6 +369,7 @@ export class CelestialBody {
       position: this.mesh.position.clone(),
       radius: this.radius,
       color: this.color,
+      isStar: this.isStar,
     };
   }
 }
