@@ -63,6 +63,7 @@ export class CelestialBody {
 
     this.rotationSpeed = config.rotationSpeed;
     this.radius = config.radius;
+    this.color = config.color;
 
     if (config.rings) {
       const innerR = config.radius * 1.1;
@@ -346,6 +347,7 @@ export class CelestialBody {
       name: this.name,
       position: this.mesh.position.clone(),
       radius: this.radius,
+      color: this.color,
     };
   }
 }
