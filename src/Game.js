@@ -40,7 +40,6 @@ export class Game {
 
     this.player = new Player();
     this.scene.add(this.player.mesh);
-    this.scene.add(this.player.trail);
 
     this.projectileManager = new ProjectileManager(this.scene);
     this.enemyManager = new EnemyManager(this.scene);
@@ -128,7 +127,6 @@ export class Game {
 
       case 'playing':
         this.player.update(dt, this.input);
-        this.player.updateTrail();
 
         if (this.input.isMouseDown() && this.input.pointerLocked) {
           const fired = this.player.fire(this.projectileManager);
@@ -136,17 +134,15 @@ export class Game {
         }
 
         // Boost sound on engage
-        const isBoosting = this.player.isThrusting &&
-          (this.input.isKeyDown('ShiftLeft') || this.input.isKeyDown('ShiftRight'));
-        if (isBoosting && !this.wasBoosting) {
+        if (this.player.isBoosting && !this.wasBoosting) {
           this.audio.playBoost();
         }
-        this.wasBoosting = isBoosting;
+        this.wasBoosting = this.player.isBoosting;
 
         // Engine audio
         this.audio.updateEngine(
           this.player.isThrusting,
-          isBoosting,
+          this.player.isBoosting,
           this.player.getSpeed()
         );
 

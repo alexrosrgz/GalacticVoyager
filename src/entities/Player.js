@@ -21,17 +21,18 @@ export class Player {
     this.modelLoaded = false;
 
     this._buildPlaceholder();
-    this._buildEngineTrail();
+    this._buildEngineCone();
     this._loadModel();
 
     // Start near Earth
     this.mesh.position.set(350, 20, 0);
     this.isThrusting = false;
+    this.isBoosting = false;
   }
 
   _buildPlaceholder() {
     // Simple placeholder visible until OBJ model loads
-    const mat = new THREE.MeshStandardMaterial({ color: 0x4488cc, metalness: 0.6, roughness: 0.3 });
+    const mat = new THREE.MeshBasicMaterial({ color: 0x4488cc });
     this.placeholder = new THREE.Mesh(new THREE.ConeGeometry(1.5, 6, 8), mat);
     this.placeholder.rotation.x = Math.PI / 2;
     this.mesh.add(this.placeholder);
@@ -54,49 +55,170 @@ export class Player {
     }
   }
 
-  _buildEngineTrail() {
-    const trailCount = 30;
-    const positions = new Float32Array(trailCount * 3);
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  _buildEngineCone() {
+    this._engineTime = 0;
 
-    this.trailMaterial = new THREE.PointsMaterial({
-      color: 0xff6622,
-      size: 1.5,
-      sizeAttenuation: true,
+    // Shared shaders — gradient fade, vertex wobble, flicker
+    const vertShader = `
+      uniform float uTime;
+      uniform float uDisplace;
+      varying float vGradient;
+      void main() {
+        vGradient = uv.y;
+        float wobble = sin(position.y * 4.0 + uTime * 12.0)
+                     * cos(position.x * 5.0 + uTime * 8.0);
+        vec3 pos = position + normal * wobble * uDisplace * (1.0 - uv.y);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+      }
+    `;
+    const fragShader = `
+      uniform vec3 uColorHot;
+      uniform vec3 uColorCool;
+      uniform float uOpacity;
+      uniform float uTime;
+      varying float vGradient;
+      void main() {
+        float alpha = pow(vGradient, 0.7) * uOpacity;
+        vec3 col = mix(uColorCool, uColorHot, pow(vGradient, 0.5));
+        float flicker = 1.0 + sin(uTime * 30.0) * 0.06 + sin(uTime * 47.0) * 0.04;
+        alpha *= flicker;
+        gl_FragColor = vec4(col, alpha);
+      }
+    `;
+
+    // Outer cone — glow envelope (4 height segments for displacement)
+    this.outerConeMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uOpacity: { value: 0.15 },
+        uColorHot: { value: new THREE.Color(0xffeedd) },
+        uColorCool: { value: new THREE.Color(0xff4400) },
+        uDisplace: { value: 0.05 },
+      },
+      vertexShader: vertShader,
+      fragmentShader: fragShader,
       transparent: true,
-      opacity: 0.7,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+      side: THREE.DoubleSide,
     });
+    this.outerCone = new THREE.Mesh(
+      new THREE.ConeGeometry(1.25, 5, 16, 4, true),
+      this.outerConeMat
+    );
+    this.outerCone.rotation.x = Math.PI / 2;
+    this.outerCone.position.z = 6 + 2.5;
+    this.mesh.add(this.outerCone);
 
-    this.trail = new THREE.Points(geometry, this.trailMaterial);
-    this.trailPositions = [];
-    this.trailCount = trailCount;
+    // Inner cone — hot core
+    this.innerConeMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uOpacity: { value: 0.12 },
+        uColorHot: { value: new THREE.Color(0xffffff) },
+        uColorCool: { value: new THREE.Color(0xffaa44) },
+        uDisplace: { value: 0.03 },
+      },
+      vertexShader: vertShader,
+      fragmentShader: fragShader,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+    });
+    this.innerCone = new THREE.Mesh(
+      new THREE.ConeGeometry(0.5, 4, 12, 4, true),
+      this.innerConeMat
+    );
+    this.innerCone.rotation.x = Math.PI / 2;
+    this.innerCone.position.z = 6 + 2;
+    this.mesh.add(this.innerCone);
+
+    this._outerConeBaseLen = 5;
+    this._innerConeBaseLen = 4;
+
+    // Nozzle glow sprite (procedural soft circle)
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 64;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, 'rgba(255,200,100,1)');
+    g.addColorStop(0.3, 'rgba(255,120,40,0.5)');
+    g.addColorStop(1, 'rgba(255,60,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 64, 64);
+    this.nozzleGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(c),
+      transparent: true,
+      opacity: 0.15,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+    }));
+    this.nozzleGlow.scale.set(2.5, 2.5, 1);
+    this.nozzleGlow.position.z = 6;
+    this.mesh.add(this.nozzleGlow);
+
+    // Exhaust particles — 6 soft sparks drifting in local space
+    const pCount = 6;
+    this._exhaustData = [];
+    for (let i = 0; i < pCount; i++) {
+      this._exhaustData.push({ life: 0, maxLife: 0.8 + Math.random() * 0.7 });
+    }
+    const pGeo = new THREE.BufferGeometry();
+    pGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pCount * 3), 3));
+    pGeo.setAttribute('aAlpha', new THREE.BufferAttribute(new Float32Array(pCount), 1));
+    pGeo.setAttribute('aSize', new THREE.BufferAttribute(new Float32Array(pCount), 1));
+    this._exhaustMat = new THREE.ShaderMaterial({
+      uniforms: { uColor: { value: new THREE.Color(0xff8844) } },
+      vertexShader: `
+        attribute float aAlpha;
+        attribute float aSize;
+        varying float vAlpha;
+        void main() {
+          vAlpha = aAlpha;
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = aSize * 200.0 / length(mv.xyz);
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uColor;
+        varying float vAlpha;
+        void main() {
+          float d = length(gl_PointCoord - 0.5) * 2.0;
+          float falloff = 1.0 - smoothstep(0.0, 1.0, d);
+          gl_FragColor = vec4(uColor, vAlpha * falloff);
+        }
+      `,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+    });
+    this._exhaustPoints = new THREE.Points(pGeo, this._exhaustMat);
+    this._exhaustPoints.frustumCulled = false;
+    this.mesh.add(this._exhaustPoints);
+
+    // Initial idle state
+    this._coneScaleY = 0.5;
+    this._coneScaleXZ = 0.7;
+    this._outerOpacity = 0.15;
+    this._innerOpacity = 0.12;
+    this._nozzleOpacity = 0.15;
+    this._applyConeState();
   }
 
-  updateTrail() {
-    const backward = new THREE.Vector3(0, 0, 1).applyQuaternion(this.mesh.quaternion).normalize();
-    const trailPos = this.mesh.position.clone().add(backward.multiplyScalar(6));
-
-    this.trailPositions.unshift(trailPos);
-    if (this.trailPositions.length > this.trailCount) {
-      this.trailPositions.pop();
-    }
-
-    const posAttr = this.trail.geometry.getAttribute('position');
-    for (let i = 0; i < this.trailCount; i++) {
-      if (i < this.trailPositions.length) {
-        posAttr.array[i * 3]     = this.trailPositions[i].x;
-        posAttr.array[i * 3 + 1] = this.trailPositions[i].y;
-        posAttr.array[i * 3 + 2] = this.trailPositions[i].z;
-      } else {
-        posAttr.array[i * 3]     = trailPos.x;
-        posAttr.array[i * 3 + 1] = trailPos.y;
-        posAttr.array[i * 3 + 2] = trailPos.z;
-      }
-    }
-    posAttr.needsUpdate = true;
-
-    this.trailMaterial.opacity = this.isThrusting ? 0.7 : 0.15;
+  _applyConeState() {
+    this.outerCone.scale.set(this._coneScaleXZ, this._coneScaleY, this._coneScaleXZ);
+    this.innerCone.scale.set(this._coneScaleXZ, this._coneScaleY, this._coneScaleXZ);
+    this.outerConeMat.uniforms.uOpacity.value = this._outerOpacity;
+    this.innerConeMat.uniforms.uOpacity.value = this._innerOpacity;
+    this.outerCone.position.z = 6 + (this._outerConeBaseLen * this._coneScaleY) / 2;
+    this.innerCone.position.z = 6 + (this._innerConeBaseLen * this._coneScaleY) / 2;
+    this.nozzleGlow.material.opacity = this._nozzleOpacity;
   }
 
   update(dt, input) {
@@ -148,6 +270,8 @@ export class Player {
     }
 
     this.isThrusting = thrustPower > 0;
+    this.isBoosting = this.isThrusting &&
+      (input.isKeyDown('ShiftLeft') || input.isKeyDown('ShiftRight'));
 
     if (thrustPower !== 0) {
       this.velocity.add(forward.multiplyScalar(thrustPower * dt));
@@ -163,6 +287,79 @@ export class Player {
     if (this.fireCooldown > 0) {
       this.fireCooldown -= dt;
     }
+
+    // Animate engine effects
+    this._engineTime += dt;
+
+    let targetOuterOp, targetInnerOp, targetScaleY, targetScaleXZ;
+    let targetGlowOp, targetGlowScale, targetDispOuter, targetDispInner;
+    if (this.isBoosting) {
+      targetOuterOp = 0.45; targetInnerOp = 0.4;
+      targetScaleY = 1.6; targetScaleXZ = 1.2;
+      targetGlowOp = 0.5; targetGlowScale = 4.5;
+      targetDispOuter = 0.25; targetDispInner = 0.15;
+    } else if (this.isThrusting) {
+      targetOuterOp = 0.3; targetInnerOp = 0.25;
+      targetScaleY = 1.0; targetScaleXZ = 1.0;
+      targetGlowOp = 0.35; targetGlowScale = 3.5;
+      targetDispOuter = 0.15; targetDispInner = 0.08;
+    } else {
+      targetOuterOp = 0.15; targetInnerOp = 0.12;
+      targetScaleY = 0.5; targetScaleXZ = 0.7;
+      targetGlowOp = 0.15; targetGlowScale = 2.5;
+      targetDispOuter = 0.05; targetDispInner = 0.03;
+    }
+
+    const rate = 1 - Math.pow(0.001, dt);
+    this._outerOpacity = THREE.MathUtils.lerp(this._outerOpacity, targetOuterOp, rate);
+    this._innerOpacity = THREE.MathUtils.lerp(this._innerOpacity, targetInnerOp, rate);
+    this._coneScaleY = THREE.MathUtils.lerp(this._coneScaleY, targetScaleY, rate);
+    this._coneScaleXZ = THREE.MathUtils.lerp(this._coneScaleXZ, targetScaleXZ, rate);
+    this._nozzleOpacity = THREE.MathUtils.lerp(this._nozzleOpacity, targetGlowOp, rate);
+    const gs = THREE.MathUtils.lerp(this.nozzleGlow.scale.x, targetGlowScale, rate);
+    this.nozzleGlow.scale.set(gs, gs, 1);
+
+    // Shader uniforms — time, displacement
+    this.outerConeMat.uniforms.uTime.value = this._engineTime;
+    this.innerConeMat.uniforms.uTime.value = this._engineTime;
+    this.outerConeMat.uniforms.uDisplace.value = THREE.MathUtils.lerp(
+      this.outerConeMat.uniforms.uDisplace.value, targetDispOuter, rate);
+    this.innerConeMat.uniforms.uDisplace.value = THREE.MathUtils.lerp(
+      this.innerConeMat.uniforms.uDisplace.value, targetDispInner, rate);
+
+    this._applyConeState();
+
+    // Exhaust particles — drift backward in local space, fade, respawn
+    const posAttr = this._exhaustPoints.geometry.getAttribute('position');
+    const alphaAttr = this._exhaustPoints.geometry.getAttribute('aAlpha');
+    const sizeAttr = this._exhaustPoints.geometry.getAttribute('aSize');
+    const coneEndZ = 6 + this._outerConeBaseLen * this._coneScaleY;
+    const spawnChance = this.isBoosting ? 0.9 : this.isThrusting ? 0.6 : 0.15;
+
+    for (let i = 0; i < this._exhaustData.length; i++) {
+      const p = this._exhaustData[i];
+      p.life += dt;
+      if (p.life >= p.maxLife) {
+        if (Math.random() < spawnChance) {
+          p.life = 0;
+          p.maxLife = 0.8 + Math.random() * 0.7;
+          posAttr.array[i * 3]     = (Math.random() - 0.5) * 1.5;
+          posAttr.array[i * 3 + 1] = (Math.random() - 0.5) * 1.5;
+          posAttr.array[i * 3 + 2] = coneEndZ;
+        } else {
+          alphaAttr.array[i] = 0;
+          sizeAttr.array[i] = 0;
+        }
+      } else {
+        const t = p.life / p.maxLife;
+        posAttr.array[i * 3 + 2] += 8 * dt;
+        alphaAttr.array[i] = (1 - t) * 0.35;
+        sizeAttr.array[i] = (1 - t * 0.5) * 2.5;
+      }
+    }
+    posAttr.needsUpdate = true;
+    alphaAttr.needsUpdate = true;
+    sizeAttr.needsUpdate = true;
 
     input.resetMouseDelta();
   }
@@ -210,5 +407,18 @@ export class Player {
     this.velocity.set(0, 0, 0);
     this.health = PLAYER_MAX_HEALTH;
     this.fireCooldown = 0;
+
+    // Reset engine effects to idle state
+    this._coneScaleY = 0.5;
+    this._coneScaleXZ = 0.7;
+    this._outerOpacity = 0.15;
+    this._innerOpacity = 0.12;
+    this._nozzleOpacity = 0.15;
+    this._engineTime = 0;
+    this.nozzleGlow.scale.set(2.5, 2.5, 1);
+    this._applyConeState();
+    for (let i = 0; i < this._exhaustData.length; i++) {
+      this._exhaustData[i].life = this._exhaustData[i].maxLife;
+    }
   }
 }
