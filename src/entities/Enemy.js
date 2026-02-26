@@ -23,10 +23,8 @@ export class Enemy {
   }
 
   _buildPlaceholder() {
-    const bodyMat = new THREE.MeshStandardMaterial({
+    const bodyMat = new THREE.MeshBasicMaterial({
       color: 0xcc3322,
-      metalness: 0.5,
-      roughness: 0.4,
     });
 
     this.placeholder = new THREE.Mesh(

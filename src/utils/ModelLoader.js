@@ -32,10 +32,8 @@ export function loadModel(objPath, texturePath, scale = 1) {
 
     obj.traverse((child) => {
       if (child.isMesh) {
-        child.material = new THREE.MeshStandardMaterial({
+        child.material = new THREE.MeshBasicMaterial({
           map: texture,
-          roughness: 0.5,
-          metalness: 0.3,
         });
       }
     });
