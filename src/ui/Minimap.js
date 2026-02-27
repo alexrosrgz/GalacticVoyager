@@ -48,10 +48,31 @@ export class Minimap {
     ctx.arc(hs, hs, hs * 0.5, 0, Math.PI * 2);
     ctx.stroke();
 
+    // Asteroid belt ring
+    for (const planet of planets) {
+      if (planet.type !== 'asteroidBelt') continue;
+      const center = planet.systemCenter;
+      const cx = hs + (center.x - playerPos.x) * scale;
+      const cz = hs + ((center.z || 0) - playerPos.z) * scale;
+      const rInner = planet.innerRadius * scale;
+      const rOuter = planet.outerRadius * scale;
+      const rMid = (rInner + rOuter) / 2;
+      const thickness = rOuter - rInner;
+
+      if (cx + rOuter > 0 && cx - rOuter < this.size && cz + rOuter > 0 && cz - rOuter < this.size) {
+        ctx.strokeStyle = 'rgba(136, 119, 102, 0.25)';
+        ctx.lineWidth = Math.max(1, thickness);
+        ctx.beginPath();
+        ctx.arc(cx, cz, rMid, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
     // Orbital paths — unified loop using body metadata
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
     ctx.lineWidth = 0.5;
     for (const planet of planets) {
+      if (planet.type === 'asteroidBelt') continue;
       if (!planet.minimapOrbitalPath) continue;
 
       const center = planet.systemCenter;
@@ -74,6 +95,7 @@ export class Minimap {
     const earthRadius = 8;
     const baseSize = 4;
     for (const planet of planets) {
+      if (planet.type === 'asteroidBelt') continue;
       const dx = (planet.position.x - playerPos.x) * scale;
       const dz = (planet.position.z - playerPos.z) * scale;
       const px = hs + dx;

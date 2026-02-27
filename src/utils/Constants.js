@@ -42,6 +42,16 @@ export const STAR_SYSTEMS = [
         ],
       },
     ],
+    asteroidBelt: {
+      innerRadius: 650,
+      outerRadius: 1150,
+      count: 400,
+      minSize: 0.8,
+      maxSize: 4.5,
+      beltThickness: 30,
+      orbitalSpeed: 0.005,
+      color: 0x887766,
+    },
   },
   {
     name: 'ALPHA CENTAURI',
@@ -133,3 +143,6 @@ export const COLLISION_SEPARATION_BUFFER = 1.0;
 export const CAMERA_OFFSET_Y = 6;
 export const CAMERA_OFFSET_Z = 22;
 export const CAMERA_LERP_FACTOR = 0.001;
+
+// Asteroid Belt
+export const ASTEROID_BELT_COLLISION_MARGIN = 50;

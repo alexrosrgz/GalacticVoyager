@@ -11,7 +11,7 @@ import { EnemyManager } from '@/entities/EnemyManager.js';
 import { HUD } from '@/ui/HUD.js';
 import { Minimap } from '@/ui/Minimap.js';
 import { MenuScreen } from '@/ui/MenuScreen.js';
-import { PROJECTILE_DAMAGE, PLAYER_BOUNCE_RESTITUTION, COLLISION_SEPARATION_BUFFER } from '@/utils/Constants.js';
+import { PROJECTILE_DAMAGE, PLAYER_BOUNCE_RESTITUTION, COLLISION_SEPARATION_BUFFER, ASTEROID_BELT_COLLISION_MARGIN } from '@/utils/Constants.js';
 import { isMobileDevice } from '@/utils/DeviceDetect.js';
 import { AudioManager } from '@/core/AudioManager.js';
 
@@ -227,6 +227,31 @@ export class Game {
         const moon = body.moons[m];
         const moonPos = moon.mesh.getWorldPosition(this._tempVec3);
         bounced = this._bounceAgainst(playerPos, playerRadius, vel, moonPos, moon.mesh.geometry.parameters.radius);
+      }
+    }
+
+    // Asteroid belt collision
+    for (let b = 0; b < this.solarSystem.asteroidBelts.length && !bounced; b++) {
+      const belt = this.solarSystem.asteroidBelts[b];
+      const margin = playerRadius + belt.maxRadius + ASTEROID_BELT_COLLISION_MARGIN;
+
+      // Broad-phase: check XZ distance from belt center
+      const bx = playerPos.x - belt.systemCenter.x;
+      const bz = playerPos.z - belt.systemCenter.z;
+      const distFromCenter = Math.sqrt(bx * bx + bz * bz);
+
+      if (distFromCenter < belt.innerRadius - margin || distFromCenter > belt.outerRadius + margin) {
+        continue;
+      }
+
+      // Narrow-phase: check individual asteroids
+      const positions = belt.positions;
+      const radii = belt.radii;
+      for (let a = 0; a < belt.count && !bounced; a++) {
+        const ax = positions[a * 3];
+        const ay = positions[a * 3 + 1];
+        const az = positions[a * 3 + 2];
+        bounced = this._bounceAgainst(playerPos, playerRadius, vel, this._tempVec3.set(ax, ay, az), radii[a]);
       }
     }
   }

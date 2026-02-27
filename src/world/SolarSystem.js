@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { STAR_SYSTEMS, INTERSTELLAR_SPACE_NAME } from '@/utils/Constants.js';
 import { CelestialBody } from '@/world/CelestialBody.js';
+import { AsteroidBelt } from '@/world/AsteroidBelt.js';
 
 export class SolarSystem {
   constructor(scene, { isMobile = false } = {}) {
     this.bodies = [];
     this.starLights = [];
+    this.asteroidBelts = [];
     this.systems = STAR_SYSTEMS;
 
     for (const system of STAR_SYSTEMS) {
@@ -53,6 +55,13 @@ export class SolarSystem {
         }
       }
 
+      // Create asteroid belt if defined
+      if (system.asteroidBelt) {
+        const belt = new AsteroidBelt(system.asteroidBelt, center);
+        scene.add(belt.mesh);
+        this.asteroidBelts.push(belt);
+      }
+
       this.bodies.push(...systemBodies);
     }
   }
@@ -97,6 +106,9 @@ export class SolarSystem {
     for (const body of this.bodies) {
       body.update(dt);
     }
+    for (const belt of this.asteroidBelts) {
+      belt.update(dt);
+    }
     // Sync star light positions
     for (const { light, body } of this.starLights) {
       light.position.copy(body.mesh.position);
@@ -104,6 +116,10 @@ export class SolarSystem {
   }
 
   getBodies() {
-    return this.bodies.map(body => body.getInfo());
+    const infos = this.bodies.map(body => body.getInfo());
+    for (const belt of this.asteroidBelts) {
+      infos.push(belt.getMinimapInfo());
+    }
+    return infos;
   }
 }
