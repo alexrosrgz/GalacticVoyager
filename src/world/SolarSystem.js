@@ -1,68 +1,72 @@
 import * as THREE from 'three';
-import { PLANETS, ALPHA_CENTAURI_BODIES, ALPHA_CENTAURI_CENTER } from '@/utils/Constants.js';
+import { STAR_SYSTEMS, INTERSTELLAR_SPACE_NAME } from '@/utils/Constants.js';
 import { CelestialBody } from '@/world/CelestialBody.js';
 
 export class SolarSystem {
   constructor(scene, { isMobile = false } = {}) {
-    // Create Sol system bodies
-    this.bodies = PLANETS.map(config => {
-      const body = new CelestialBody(config);
-      scene.add(body.mesh);
-
-      // Orbital path ring for planets (not the Sun)
-      if (config.distance > 0) {
-        const line = this._createOrbitalLine(config.distance, { x: 0, y: 0, z: 0 }, isMobile);
-        scene.add(line);
-      }
-
-      return body;
-    });
-
-    // Create Alpha Centauri bodies
-    const acBodiesByName = {};
-    const acBodies = ALPHA_CENTAURI_BODIES.map(config => {
-      const bodyConfig = { ...config, systemOrigin: ALPHA_CENTAURI_CENTER };
-      const body = new CelestialBody(bodyConfig);
-      scene.add(body.mesh);
-      acBodiesByName[config.name] = body;
-
-      // Orbital path line for stars orbiting the barycenter
-      if (config.distance > 0 && !config.parentStar) {
-        const line = this._createOrbitalLine(config.distance, ALPHA_CENTAURI_CENTER, isMobile, {
-          eccentricity: config.eccentricity || 0,
-          reversed: config.orbitReversed || false,
-          tilt: config.orbitalTilt || 0,
-        });
-        scene.add(line);
-      }
-      return body;
-    });
-
-    // Wire parentBody references for planets orbiting specific stars
-    for (let i = 0; i < ALPHA_CENTAURI_BODIES.length; i++) {
-      const config = ALPHA_CENTAURI_BODIES[i];
-      if (config.parentStar) {
-        acBodies[i].parentBody = acBodiesByName[config.parentStar];
-        // Add orbital line as child of the parent star mesh so it moves with the star
-        const line = this._createOrbitalLine(config.distance, { x: 0, y: 0, z: 0 }, isMobile);
-        acBodiesByName[config.parentStar].mesh.add(line);
-      }
-    }
-
-    // Add all AC bodies to the main bodies array
-    this.bodies.push(...acBodies);
-
-    // Create lights for Alpha Centauri stars
+    this.bodies = [];
     this.starLights = [];
-    for (const body of acBodies) {
-      const config = ALPHA_CENTAURI_BODIES.find(c => c.name === body.name);
-      if (config && config.isStar) {
-        const light = new THREE.PointLight(config.lightColor, config.lightIntensity, 0);
-        light.position.copy(body.mesh.position);
-        scene.add(light);
-        this.starLights.push({ light, body });
+    this.systems = STAR_SYSTEMS;
+
+    for (const system of STAR_SYSTEMS) {
+      const center = system.center;
+      const bodiesByName = {};
+      const systemBodies = [];
+
+      // Create all bodies in this system
+      for (const config of system.bodies) {
+        const bodyConfig = { ...config, systemOrigin: center };
+        const body = new CelestialBody(bodyConfig);
+        scene.add(body.mesh);
+        bodiesByName[config.name] = body;
+        systemBodies.push(body);
+
+        // Orbital line for bodies orbiting the barycenter (not a parent star)
+        if (config.distance > 0 && !config.parentStar) {
+          const line = this._createOrbitalLine(config.distance, center, isMobile, {
+            eccentricity: config.eccentricity || 0,
+            reversed: config.orbitReversed || false,
+            tilt: config.orbitalTilt || 0,
+          });
+          scene.add(line);
+        }
+      }
+
+      // Wire parent-child relationships
+      for (let i = 0; i < system.bodies.length; i++) {
+        const config = system.bodies[i];
+        if (config.parentStar) {
+          systemBodies[i].parentBody = bodiesByName[config.parentStar];
+          const line = this._createOrbitalLine(config.distance, { x: 0, y: 0, z: 0 }, isMobile);
+          bodiesByName[config.parentStar].mesh.add(line);
+        }
+      }
+
+      // Create PointLights for stars
+      for (const body of systemBodies) {
+        const config = system.bodies.find(c => c.name === body.name);
+        if (config && config.isStar && config.lightIntensity) {
+          const light = new THREE.PointLight(config.lightColor || 0xffffff, config.lightIntensity, 0);
+          light.position.copy(body.mesh.position);
+          scene.add(light);
+          this.starLights.push({ light, body });
+        }
+      }
+
+      this.bodies.push(...systemBodies);
+    }
+  }
+
+  getSystemAt(position) {
+    for (const system of this.systems) {
+      const dx = position.x - system.center.x;
+      const dy = position.y - (system.center.y || 0);
+      const dz = position.z - (system.center.z || 0);
+      if (Math.sqrt(dx * dx + dy * dy + dz * dz) < system.boundaryRadius) {
+        return system.name;
       }
     }
+    return INTERSTELLAR_SPACE_NAME;
   }
 
   _createOrbitalLine(distance, center, isMobile, { eccentricity = 0, tilt = 0, reversed = false } = {}) {

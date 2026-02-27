@@ -1,5 +1,3 @@
-import { ALPHA_CENTAURI_CENTER } from '@/utils/Constants.js';
-
 export class Minimap {
   constructor(isMobile = false) {
     this.size = isMobile ? 120 : 180;
@@ -50,40 +48,24 @@ export class Minimap {
     ctx.arc(hs, hs, hs * 0.5, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Orbital paths — Sol system (centered on Sun at 0,0)
-    const sunX = hs + (0 - playerPos.x) * scale;
-    const sunZ = hs + (0 - playerPos.z) * scale;
+    // Orbital paths — unified loop using body metadata
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
     ctx.lineWidth = 0.5;
     for (const planet of planets) {
-      if (planet.name === 'Sun') continue;
-      if (planet.isStar) continue;         // skip AC stars
-      if (planet.name.startsWith('Proxima')) continue; // skip Proxima planets (tiny orbits around moving star)
+      if (!planet.minimapOrbitalPath) continue;
 
-      const orbitRadius = Math.sqrt(planet.position.x * planet.position.x + planet.position.z * planet.position.z) || planet.radius;
-      const r = orbitRadius * scale;
-      if (sunX + r > 0 && sunX - r < this.size && sunZ + r > 0 && sunZ - r < this.size) {
-        ctx.beginPath();
-        ctx.arc(sunX, sunZ, r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    }
+      const center = planet.systemCenter;
+      const cx = hs + (center.x - playerPos.x) * scale;
+      const cz = hs + ((center.z || 0) - playerPos.z) * scale;
 
-    // Orbital paths — Alpha Centauri system (centered on AC barycenter)
-    const acX = hs + (ALPHA_CENTAURI_CENTER.x - playerPos.x) * scale;
-    const acZ = hs + (ALPHA_CENTAURI_CENTER.z - playerPos.z) * scale;
-    for (const planet of planets) {
-      if (!planet.isStar) continue;
-      if (planet.name === 'Sun') continue;
-      // Draw orbit circles for AC stars around barycenter
-      const dx = planet.position.x - ALPHA_CENTAURI_CENTER.x;
-      const dz = planet.position.z - ALPHA_CENTAURI_CENTER.z;
-      const orbitRadius = Math.sqrt(dx * dx + dz * dz);
-      if (orbitRadius < 1) continue;
+      const dx = planet.position.x - center.x;
+      const dz = planet.position.z - (center.z || 0);
+      const orbitRadius = Math.sqrt(dx * dx + dz * dz) || planet.radius;
       const r = orbitRadius * scale;
-      if (acX + r > 0 && acX - r < this.size && acZ + r > 0 && acZ - r < this.size) {
+
+      if (cx + r > 0 && cx - r < this.size && cz + r > 0 && cz - r < this.size) {
         ctx.beginPath();
-        ctx.arc(acX, acZ, r, 0, Math.PI * 2);
+        ctx.arc(cx, cz, r, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
@@ -98,7 +80,7 @@ export class Minimap {
       const py = hs + dz;
 
       if (px > -10 && px < this.size + 10 && py > -10 && py < this.size + 10) {
-        const hex = planet.name === 'Mars' ? '#dd8855' : '#' + planet.color.toString(16).padStart(6, '0');
+        const hex = planet.minimapColorOverride || '#' + planet.color.toString(16).padStart(6, '0');
 
         if (planet.isStar) {
           // Stars get a glow effect and larger minimum size

@@ -12,25 +12,6 @@ const fontPromise = new Promise((resolve) => {
   });
 });
 
-// Soft neon tints per planet
-const NEON_COLORS = {
-  Sun:     '#ffcc66',
-  Mercury: '#bbbbcc',
-  Venus:   '#e8d8a8',
-  Earth:   '#66aaff',
-  Mars:    '#ff8866',
-  Jupiter: '#eebb88',
-  Saturn:  '#ddcc88',
-  Uranus:  '#88ddee',
-  Neptune: '#7788ee',
-  'Rigil Kentaurus (Alpha Cen A)': '#fff5aa',
-  'Toliman (Alpha Cen B)': '#ffd8a8',
-  'Proxima Centauri (Alpha Cen C)': '#ff7744',
-  'Proxima b': '#66cc88',
-  'Proxima d': '#cc9966',
-  'Proxima c': '#8899cc',
-};
-
 export class CelestialBody {
   constructor(config) {
     this.name = config.name;
@@ -77,6 +58,9 @@ export class CelestialBody {
     this.eccentricity = config.eccentricity || 0;
     this.orbitalTilt = config.orbitalTilt || 0;
     this.orbitReversed = config.orbitReversed || false;
+    this.minimapOrbitalPath = config.minimapOrbitalPath !== undefined
+      ? config.minimapOrbitalPath : (config.distance > 0);
+    this.minimapColorOverride = config.minimapColorOverride || null;
 
     if (config.rings) {
       const innerR = config.radius * 1.1;
@@ -108,7 +92,7 @@ export class CelestialBody {
     }
 
     // 3D spinning label above the planet
-    const neonColor = NEON_COLORS[config.name] || '#aaaacc';
+    const neonColor = config.labelColor || '#aaaacc';
     this.labelPivot = new THREE.Object3D();
     this.mesh.add(this.labelPivot);
     this._createLabel3D(config.name, config.radius, neonColor);
@@ -402,6 +386,9 @@ export class CelestialBody {
       radius: this.radius,
       color: this.color,
       isStar: this.isStar,
+      minimapOrbitalPath: this.minimapOrbitalPath,
+      minimapColorOverride: this.minimapColorOverride,
+      systemCenter: this.systemOrigin,
     };
   }
 }

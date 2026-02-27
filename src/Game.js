@@ -153,15 +153,9 @@ export class Game {
         this.solarSystem.update(dt);
 
         // Switch system label based on which system's extent the player is within
-        const playerPos = this.player.mesh.position;
-        const distToSol = playerPos.length();
-        const dx = playerPos.x - 3950, dy = playerPos.y, dz = playerPos.z;
-        const distToAC = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        let systemName;
-        if (distToSol < 3200) systemName = 'SOLAR SYSTEM';
-        else if (distToAC < 800) systemName = 'ALPHA CENTAURI';
-        else systemName = 'INTERSTELLAR SPACE';
-        this.hud.showSystemName(systemName);
+        this.hud.showSystemName(
+          this.solarSystem.getSystemAt(this.player.mesh.position)
+        );
 
         this.hud.update(
           this.player.health,
