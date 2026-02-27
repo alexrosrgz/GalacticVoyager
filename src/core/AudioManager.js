@@ -307,6 +307,59 @@ export class AudioManager {
     rush.stop(now + rushDuration);
   }
 
+  // ── Bounce off celestial body ─────────────────────────────────────
+
+  playBounce() {
+    if (!this.initialized) return;
+
+    const now = this.ctx.currentTime;
+
+    // Low sine sweep (150 Hz → 40 Hz) for a soft thud feel
+    const osc = this.ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(150, now);
+    osc.frequency.exponentialRampToValueAtTime(40, now + 0.18);
+
+    const oscGain = this.ctx.createGain();
+    oscGain.gain.setValueAtTime(0.25, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+    // Soft filtered noise for impact texture
+    const duration = 0.15;
+    const sampleRate = this.ctx.sampleRate;
+    const length = Math.ceil(sampleRate * duration);
+    const buffer = this.ctx.createBuffer(1, length, sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i++) {
+      data[i] = (Math.random() * 2 - 1);
+    }
+
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(800, now);
+    filter.frequency.exponentialRampToValueAtTime(100, now + duration);
+    filter.Q.setValueAtTime(1, now);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.12, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc.connect(oscGain);
+    oscGain.connect(this.masterGain);
+
+    noise.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+
+    osc.start(now);
+    osc.stop(now + 0.21);
+    noise.start(now);
+    noise.stop(now + duration);
+  }
+
   // ── Enemy explosion ────────────────────────────────────────────────
 
   playExplosion() {

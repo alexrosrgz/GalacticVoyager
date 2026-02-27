@@ -11,7 +11,7 @@ import { EnemyManager } from '@/entities/EnemyManager.js';
 import { HUD } from '@/ui/HUD.js';
 import { Minimap } from '@/ui/Minimap.js';
 import { MenuScreen } from '@/ui/MenuScreen.js';
-import { PROJECTILE_DAMAGE } from '@/utils/Constants.js';
+import { PROJECTILE_DAMAGE, PLAYER_BOUNCE_RESTITUTION, COLLISION_SEPARATION_BUFFER } from '@/utils/Constants.js';
 import { isMobileDevice } from '@/utils/DeviceDetect.js';
 import { AudioManager } from '@/core/AudioManager.js';
 
@@ -45,6 +45,7 @@ export class Game {
     this.enemyManager = new EnemyManager(this.scene);
 
     this.audio = new AudioManager();
+    this._tempVec3 = new THREE.Vector3();
 
     this.hud = new HUD(this.isMobile);
     this.minimap = new Minimap(this.isMobile);
@@ -77,6 +78,7 @@ export class Game {
     this.audio.init();
     this.audio.resume();
     this.wasBoosting = false;
+    this.lastBounceTime = 0;
   }
 
   endGame() {
@@ -205,5 +207,69 @@ export class Game {
       }
       this.projectileManager.releaseProjectile(hit.projectile);
     }
+
+    // Celestial body + moon bounce collision
+    const playerPos = this.player.mesh.position;
+    const playerRadius = this.player.boundingRadius;
+    const vel = this.player.velocity;
+    const bodies = this.solarSystem.bodies;
+    let bounced = false;
+
+    for (let i = 0; i < bodies.length && !bounced; i++) {
+      const body = bodies[i];
+      const bodyPos = body.mesh.position;
+
+      // Check body itself
+      bounced = this._bounceAgainst(playerPos, playerRadius, vel, bodyPos, body.radius);
+
+      // Check moons
+      for (let m = 0; m < body.moons.length && !bounced; m++) {
+        const moon = body.moons[m];
+        const moonPos = moon.mesh.getWorldPosition(this._tempVec3);
+        bounced = this._bounceAgainst(playerPos, playerRadius, vel, moonPos, moon.mesh.geometry.parameters.radius);
+      }
+    }
+  }
+
+  _bounceAgainst(playerPos, playerRadius, vel, objPos, objRadius) {
+    const combinedRadius = playerRadius + objRadius;
+    const dx = playerPos.x - objPos.x;
+    const dy = playerPos.y - objPos.y;
+    const dz = playerPos.z - objPos.z;
+    const distSq = dx * dx + dy * dy + dz * dz;
+
+    if (distSq >= combinedRadius * combinedRadius) return false;
+
+    const dist = Math.sqrt(distSq);
+
+    // Surface normal: object center → player
+    const nx = dx / dist;
+    const ny = dy / dist;
+    const nz = dz / dist;
+
+    // Push player out to surface + buffer
+    const pushDist = combinedRadius + COLLISION_SEPARATION_BUFFER - dist;
+    playerPos.x += nx * pushDist;
+    playerPos.y += ny * pushDist;
+    playerPos.z += nz * pushDist;
+
+    // Only reflect if moving into the body (dot < 0)
+    const dot = vel.x * nx + vel.y * ny + vel.z * nz;
+    if (dot < 0) {
+      const factor = (1 + PLAYER_BOUNCE_RESTITUTION) * dot;
+      vel.x -= factor * nx;
+      vel.y -= factor * ny;
+      vel.z -= factor * nz;
+    }
+
+    // Camera shake + bounce sound with 200ms cooldown
+    const now = performance.now();
+    if (now - this.lastBounceTime > 200) {
+      this.camera.shake(3, 0.2);
+      this.audio.playBounce();
+      this.lastBounceTime = now;
+    }
+
+    return true;
   }
 }

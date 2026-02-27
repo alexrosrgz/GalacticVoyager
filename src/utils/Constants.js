@@ -125,6 +125,10 @@ export const PROJECTILE_SPEED = 500;
 export const PROJECTILE_LIFETIME = 3;
 export const PROJECTILE_DAMAGE = 10;
 
+// Collision / Bounce
+export const PLAYER_BOUNCE_RESTITUTION = 0.5;
+export const COLLISION_SEPARATION_BUFFER = 1.0;
+
 // Camera
 export const CAMERA_OFFSET_Y = 6;
 export const CAMERA_OFFSET_Z = 22;
