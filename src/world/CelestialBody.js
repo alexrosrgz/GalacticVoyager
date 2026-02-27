@@ -46,6 +46,11 @@ export class CelestialBody {
       });
     }
 
+    // Boost star material color above 1.0 so bloom picks it up
+    if (config.bloomScale) {
+      material.color.multiplyScalar(config.bloomScale);
+    }
+
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.position.set(config.distance, 0, 0);
 

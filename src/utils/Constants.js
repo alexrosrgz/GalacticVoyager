@@ -5,7 +5,7 @@ export const STAR_SYSTEMS = [
     boundaryRadius: 3200,
     bodies: [
       { name: 'Sun',     radius: 80,   distance: 0,    color: 0xffaa00, emissive: true,  orbitalSpeed: 0,     rotationSpeed: 0.05,  texture: '/textures/2k_sun.jpg',
-        isStar: true, lightIntensity: 2500000, lightColor: 0xffffff, labelColor: '#ffcc66', minimapOrbitalPath: false },
+        isStar: true, lightIntensity: 2500000, lightColor: 0xffffff, labelColor: '#ffcc66', minimapOrbitalPath: false, bloomScale: 2.0 },
       { name: 'Mercury', radius: 3,    distance: 200,  color: 0xaaaaaa, emissive: false, orbitalSpeed: 0.04,  rotationSpeed: 0.01,  texture: '/textures/2k_mercury.jpg',
         labelColor: '#bbbbcc', minimapOrbitalPath: true },
       { name: 'Venus',   radius: 7.5,  distance: 300,  color: 0xe8cda0, emissive: false, orbitalSpeed: 0.035, rotationSpeed: 0.005, texture: '/textures/2k_venus_surface.jpg',
@@ -45,8 +45,8 @@ export const STAR_SYSTEMS = [
   },
   {
     name: 'ALPHA CENTAURI',
-    center: { x: 3950, y: 0, z: 0 },
-    boundaryRadius: 800,
+    center: { x: 5300, y: 0, z: 0 },
+    boundaryRadius: 1100,
     bodies: [
       // Alpha Centauri A — G2V yellow star, 1.22 solar radii, 1.52 L☉
       {
@@ -55,7 +55,7 @@ export const STAR_SYSTEMS = [
         rotationSpeed: 0.05, initialAngle: 0, isStar: true,
         eccentricity: 0.5179,
         lightIntensity: 3800000, lightColor: 0xfff4ea,
-        labelColor: '#fff5aa', minimapOrbitalPath: true,
+        labelColor: '#fff5aa', minimapOrbitalPath: true, bloomScale: 0.94,
       },
       // Alpha Centauri B — K1V orange star, 0.86 solar radii, 0.50 L☉, opposite side of barycenter
       {
@@ -64,27 +64,27 @@ export const STAR_SYSTEMS = [
         rotationSpeed: 0.06, initialAngle: 0, orbitReversed: true, isStar: true,
         eccentricity: 0.5179,
         lightIntensity: 1250000, lightColor: 0xffd8a8,
-        labelColor: '#ffd8a8', minimapOrbitalPath: true,
+        labelColor: '#ffd8a8', minimapOrbitalPath: true, bloomScale: 1.18,
       },
       // Proxima Centauri — M5.5Ve red dwarf, 0.15 solar radii, 0.0017 L☉, inclined orbit
       {
-        name: 'Proxima Centauri (Alpha Cen C)', radius: 12, distance: 500,
+        name: 'Proxima Centauri (Alpha Cen C)', radius: 12, distance: 700,
         color: 0xff6633, emissive: true, orbitalSpeed: 0.005,
         rotationSpeed: 0.08, isStar: true,
         orbitalTilt: 0.52,
         lightIntensity: 4250, lightColor: 0xff6633,
-        labelColor: '#ff7744', minimapOrbitalPath: true,
+        labelColor: '#ff7744', minimapOrbitalPath: true, bloomScale: 2.8,
       },
       // Proxima b — habitable zone rocky world, ~1.17 Earth masses
       {
-        name: 'Proxima b', radius: 8.5, distance: 50,
+        name: 'Proxima b', radius: 8.5, distance: 70,
         color: 0x448866, emissive: false, orbitalSpeed: 0.6,
         rotationSpeed: 0.2, parentStar: 'Proxima Centauri (Alpha Cen C)',
         labelColor: '#66cc88', minimapOrbitalPath: false,
       },
       // Proxima d — very close hot world, ~0.26 Earth masses
       {
-        name: 'Proxima d', radius: 4, distance: 30,
+        name: 'Proxima d', radius: 4, distance: 45,
         color: 0xcc8855, emissive: false, orbitalSpeed: 1.2,
         rotationSpeed: 0.15, parentStar: 'Proxima Centauri (Alpha Cen C)',
         labelColor: '#cc9966', minimapOrbitalPath: false,
