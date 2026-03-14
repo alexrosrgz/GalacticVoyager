@@ -11,7 +11,7 @@ import { EnemyManager } from '@/entities/EnemyManager.js';
 import { HUD } from '@/ui/HUD.js';
 import { Minimap } from '@/ui/Minimap.js';
 import { MenuScreen } from '@/ui/MenuScreen.js';
-import { PROJECTILE_DAMAGE, PLAYER_BOUNCE_RESTITUTION, COLLISION_SEPARATION_BUFFER, ASTEROID_BELT_COLLISION_MARGIN } from '@/utils/Constants.js';
+import { PROJECTILE_DAMAGE, PLAYER_BOUNCE_RESTITUTION, COLLISION_SEPARATION_BUFFER, ASTEROID_BELT_COLLISION_MARGIN, BLACK_HOLE } from '@/utils/Constants.js';
 import { isMobileDevice } from '@/utils/DeviceDetect.js';
 import { AudioManager } from '@/core/AudioManager.js';
 
@@ -81,12 +81,13 @@ export class Game {
     this.lastBounceTime = 0;
   }
 
-  endGame() {
+  endGame(blackHole = false) {
     this.state = 'gameover';
     this.hud.hide();
     this.input.hideTouchControls();
-    this.menuScreen.showGameOver(this.score);
+    this.menuScreen.showGameOver(this.score, blackHole);
     this.audio.stopEngine();
+    this.hud.hideBlackHoleWarning();
     if (!this.isMobile) {
       document.exitPointerLock();
     }
@@ -107,6 +108,11 @@ export class Game {
 
     this.enemyManager.spawnTimer = 3;
     this.player.reset();
+    this.player.mesh.visible = true;
+    this.blackHoleCaptured = false;
+    this.bhCaptureTimer = 0;
+    this.camera.getCamera().fov = 60;
+    this.camera.getCamera().updateProjectionMatrix();
     this.score = 0;
     this.startGame();
   }
@@ -171,6 +177,50 @@ export class Game {
           this.enemyManager.getActiveEnemies(),
           this.solarSystem.getBodies()
         );
+
+        // ── Black hole interaction ──
+        {
+          const bh = this.solarSystem.blackHole;
+          const dist = bh.getDistanceTo(this.player.mesh.position);
+
+          if (this.blackHoleCaptured) {
+            // Spaghettification sequence — pull toward singularity
+            this.bhCaptureTimer += dt;
+            const t = this.bhCaptureTimer;
+            const dir = bh.mesh.position.clone().sub(this.player.mesh.position).normalize();
+            const pullStrength = 50 + t * t * 30;
+            this.player.velocity.copy(dir.multiplyScalar(pullStrength));
+
+            // Stretch FOV for distortion effect
+            const fovTarget = 60 + t * 15;
+            this.camera.getCamera().fov = Math.min(fovTarget, 140);
+            this.camera.getCamera().updateProjectionMatrix();
+
+            // Camera shake intensifies gradually
+            this.camera.shake(t * 3, 0.1);
+
+            // After ~6 seconds or reaching center, end game
+            const distToCenter = bh.getDistanceTo(this.player.mesh.position);
+            if (t > 6 || distToCenter < 20) {
+              this.player.mesh.visible = false;
+              this.endGame(true);
+            }
+          } else if (dist < BLACK_HOLE.shaderSphereRadius) {
+            // Crossed into the black hole's gravitational capture zone
+            this.blackHoleCaptured = true;
+            this.bhCaptureTimer = 0;
+            this.player.velocity.set(0, 0, 0);
+          }
+
+          // HUD warning
+          if (dist < BLACK_HOLE.hudWarningRadius) {
+            const intensity = 1 - (dist - BLACK_HOLE.eventHorizonRadius) / (BLACK_HOLE.hudWarningRadius - BLACK_HOLE.eventHorizonRadius);
+            this.hud.showBlackHoleWarning(Math.max(0, Math.min(1, intensity)));
+          } else if (!this.blackHoleCaptured) {
+            this.hud.hideBlackHoleWarning();
+          }
+
+        }
 
         if (this.player.health <= 0) {
           this.endGame();

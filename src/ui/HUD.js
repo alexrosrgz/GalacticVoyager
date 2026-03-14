@@ -165,11 +165,66 @@ export class HUD {
     this.speedDisplay.textContent = 'SPEED: ' + Math.round(speed);
   }
 
+  showBlackHoleWarning(intensity) {
+    if (!this.bhWarning) {
+      const div = document.createElement('div');
+      div.id = 'bh-warning';
+      div.innerHTML = 'WARNING: APPROACHING EVENT HORIZON';
+      document.getElementById('hud').appendChild(div);
+      this.bhWarning = div;
+
+      const s = document.createElement('style');
+      s.textContent = `
+        #bh-warning {
+          position: absolute;
+          bottom: 50%;
+          left: 50%;
+          transform: translateX(-50%);
+          color: #ff2222;
+          font-family: monospace;
+          font-size: 18px;
+          font-weight: bold;
+          letter-spacing: 3px;
+          text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.3s;
+          white-space: nowrap;
+        }
+        #bh-vignette {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          pointer-events: none;
+          opacity: 0;
+          transition: opacity 0.3s;
+        }
+      `;
+      document.head.appendChild(s);
+
+      const vignette = document.createElement('div');
+      vignette.id = 'bh-vignette';
+      document.body.appendChild(vignette);
+      this.bhVignette = vignette;
+    }
+
+    const clamped = Math.max(0, Math.min(1, intensity));
+    this.bhWarning.style.opacity = clamped;
+    this.bhVignette.style.opacity = clamped;
+    const spread = 80 + clamped * 120;
+    this.bhVignette.style.boxShadow = `inset 0 0 ${spread}px rgba(255, 0, 0, ${clamped * 0.4})`;
+  }
+
+  hideBlackHoleWarning() {
+    if (this.bhWarning) this.bhWarning.style.opacity = '0';
+    if (this.bhVignette) this.bhVignette.style.opacity = '0';
+  }
+
   show() {
     document.getElementById('hud').style.display = 'block';
   }
 
   hide() {
     document.getElementById('hud').style.display = 'none';
+    this.hideBlackHoleWarning();
   }
 }

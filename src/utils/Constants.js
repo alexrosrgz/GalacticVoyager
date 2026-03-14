@@ -146,3 +146,14 @@ export const CAMERA_LERP_FACTOR = 0.001;
 
 // Asteroid Belt
 export const ASTEROID_BELT_COLLISION_MARGIN = 50;
+
+// Black Hole (Sagittarius A*)
+export const BLACK_HOLE = {
+  name: 'Sagittarius A*',
+  position: { x: -3750, y: 2625, z: -6000 },
+  eventHorizonRadius: 480,
+  hudWarningRadius: 5000,
+  accretionDiskRadius: 2800,
+  shaderSphereRadius: 3200,
+  labelColor: '#ff4444',
+};

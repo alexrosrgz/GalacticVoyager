@@ -91,11 +91,44 @@ export class Minimap {
       }
     }
 
-    // Planets & stars
+    // Planets, stars & black holes
     const earthRadius = 8;
     const baseSize = 4;
     for (const planet of planets) {
       if (planet.type === 'asteroidBelt') continue;
+
+      // Black hole: special rendering
+      if (planet.type === 'blackHole') {
+        const dx = (planet.position.x - playerPos.x) * scale;
+        const dz = (planet.position.z - playerPos.z) * scale;
+        const px = hs + dx;
+        const py = hs + dz;
+        if (px > -20 && px < this.size + 20 && py > -20 && py < this.size + 20) {
+          // Outer glow
+          ctx.shadowColor = '#ff4400';
+          ctx.shadowBlur = 12;
+          ctx.strokeStyle = '#ff6622';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(px, py, 7, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+
+          // Black center
+          ctx.fillStyle = '#000000';
+          ctx.beginPath();
+          ctx.arc(px, py, 5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Inner orange ring
+          ctx.strokeStyle = '#ff8844';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(px, py, 5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        continue;
+      }
       const dx = (planet.position.x - playerPos.x) * scale;
       const dz = (planet.position.z - playerPos.z) * scale;
       const px = hs + dx;

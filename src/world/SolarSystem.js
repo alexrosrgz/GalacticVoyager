@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { STAR_SYSTEMS, INTERSTELLAR_SPACE_NAME } from '@/utils/Constants.js';
 import { CelestialBody } from '@/world/CelestialBody.js';
 import { AsteroidBelt } from '@/world/AsteroidBelt.js';
+import { BlackHole } from '@/world/BlackHole.js';
 
 export class SolarSystem {
   constructor(scene, { isMobile = false } = {}) {
@@ -64,6 +65,10 @@ export class SolarSystem {
 
       this.bodies.push(...systemBodies);
     }
+
+    // Black hole
+    this.blackHole = new BlackHole({ isMobile });
+    scene.add(this.blackHole.mesh);
   }
 
   getSystemAt(position) {
@@ -113,6 +118,9 @@ export class SolarSystem {
     for (const { light, body } of this.starLights) {
       light.position.copy(body.mesh.position);
     }
+
+    // Black hole
+    this.blackHole.update(dt);
   }
 
   getBodies() {
@@ -120,6 +128,7 @@ export class SolarSystem {
     for (const belt of this.asteroidBelts) {
       infos.push(belt.getMinimapInfo());
     }
+    infos.push(this.blackHole.getInfo());
     return infos;
   }
 }

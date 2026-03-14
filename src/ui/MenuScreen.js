@@ -31,7 +31,8 @@ export class MenuScreen {
     this.gameOverScreen.id = 'gameover-screen';
     this.gameOverScreen.style.display = 'none';
     this.gameOverScreen.innerHTML = `
-      <h1>MISSION FAILED</h1>
+      <h1 id="gameover-title">MISSION FAILED</h1>
+      <p id="gameover-subtitle"></p>
       <p id="final-score">SCORE: 0</p>
       <button id="restart-btn">TRY AGAIN</button>
     `;
@@ -96,6 +97,12 @@ export class MenuScreen {
         font-size: 12px;
         color: rgba(255, 255, 255, 0.4);
       }
+      #gameover-subtitle {
+        font-size: 14px;
+        color: rgba(255, 255, 255, 0.5);
+        margin-bottom: 20px;
+        letter-spacing: 1px;
+      }
       #final-score {
         font-size: 24px;
         color: #ffaa44;
@@ -110,10 +117,21 @@ export class MenuScreen {
     this.gameOverScreen.style.display = 'none';
   }
 
-  showGameOver(score) {
+  showGameOver(score, blackHole = false) {
     this.startScreen.style.display = 'none';
     this.gameOverScreen.style.display = 'flex';
     document.getElementById('final-score').textContent = 'SCORE: ' + score;
+
+    const title = document.getElementById('gameover-title');
+    const subtitle = document.getElementById('gameover-subtitle');
+    if (blackHole) {
+      title.textContent = 'SINGULARITY REACHED';
+      subtitle.textContent = 'You crossed the event horizon. We don\'t know what happened to you.';
+      subtitle.style.display = 'block';
+    } else {
+      title.textContent = 'MISSION FAILED';
+      subtitle.style.display = 'none';
+    }
   }
 
   hideAll() {
