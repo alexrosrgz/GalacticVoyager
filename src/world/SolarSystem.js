@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { STAR_SYSTEMS, INTERSTELLAR_SPACE_NAME } from '@/utils/Constants.js';
+import { STAR_SYSTEMS, SPACE_STATIONS, INTERSTELLAR_SPACE_NAME } from '@/utils/Constants.js';
 import { CelestialBody } from '@/world/CelestialBody.js';
 import { AsteroidBelt } from '@/world/AsteroidBelt.js';
 import { BlackHole } from '@/world/BlackHole.js';
+import { SpaceStation } from '@/world/SpaceStation.js';
 
 export class SolarSystem {
   constructor(scene, { isMobile = false } = {}) {
@@ -66,6 +67,13 @@ export class SolarSystem {
       this.bodies.push(...systemBodies);
     }
 
+    // Space stations
+    this.spaceStations = [];
+    for (const stationConfig of SPACE_STATIONS) {
+      const station = new SpaceStation(stationConfig, scene);
+      this.spaceStations.push(station);
+    }
+
     // Black hole
     this.blackHole = new BlackHole({ isMobile });
     scene.add(this.blackHole.mesh);
@@ -119,6 +127,11 @@ export class SolarSystem {
       light.position.copy(body.mesh.position);
     }
 
+    // Space stations
+    for (const station of this.spaceStations) {
+      station.update(dt);
+    }
+
     // Black hole
     this.blackHole.update(dt);
   }
@@ -127,6 +140,9 @@ export class SolarSystem {
     const infos = this.bodies.map(body => body.getInfo());
     for (const belt of this.asteroidBelts) {
       infos.push(belt.getMinimapInfo());
+    }
+    for (const station of this.spaceStations) {
+      infos.push(station.getInfo());
     }
     infos.push(this.blackHole.getInfo());
     return infos;

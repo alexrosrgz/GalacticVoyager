@@ -147,6 +147,20 @@ export const CAMERA_LERP_FACTOR = 0.001;
 // Asteroid Belt
 export const ASTEROID_BELT_COLLISION_MARGIN = 50;
 
+// Space Stations
+export const SPACE_STATIONS = [
+  {
+    name: 'Frontier Station',
+    modelPath: '/models/space-station/space_station_modules.glb',
+    position: { x: 2650, y: 500, z: -2500 },
+    scale: 5,
+    rotationSpeed: 0.03,
+    boundingRadius: 50,
+    color: 0x88aacc,
+    labelColor: '#88ccff',
+  },
+];
+
 // Black Hole (Sagittarius A*)
 export const BLACK_HOLE = {
   name: 'Sagittarius A*',
