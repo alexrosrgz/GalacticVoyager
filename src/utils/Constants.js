@@ -159,6 +159,18 @@ export const SPACE_STATIONS = [
     color: 0x88aacc,
     labelColor: '#88ccff',
   },
+  {
+    name: 'Belt Station',
+    modelPath: '/models/space-station/space_station_1.glb',
+    orbitDistance: 850,
+    orbitSpeed: 0.008,
+    orbitCenter: { x: 0, y: 0, z: 0 },
+    scale: 15,
+    rotationSpeed: 0.05,
+    boundingRadius: 10,
+    color: 0x66aaff,
+    labelColor: '#66aaff',
+  },
 ];
 
 // Black Hole (Sagittarius A*)

@@ -13,7 +13,16 @@ const fontPromise = new Promise((resolve) => {
 export class SpaceStation {
   constructor(config, scene) {
     this.name = config.name;
-    this.position = new THREE.Vector3(config.position.x, config.position.y, config.position.z);
+    this.orbitBodyName = config.orbitBody || null;
+    this.orbitBody = null;
+    this.offset = config.offset ? new THREE.Vector3(config.offset.x, config.offset.y, config.offset.z) : null;
+    this.orbitDistance = config.orbitDistance || 0;
+    this.orbitSpeed = config.orbitSpeed || 0;
+    this.orbitCenter = config.orbitCenter ? new THREE.Vector3(config.orbitCenter.x, config.orbitCenter.y, config.orbitCenter.z) : null;
+    this.orbitalAngle = Math.random() * Math.PI * 2;
+    this.position = config.position
+      ? new THREE.Vector3(config.position.x, config.position.y, config.position.z)
+      : new THREE.Vector3();
     this.rotationSpeed = config.rotationSpeed || 0.05;
     this.scale = config.scale || 1;
     this.boundingRadius = config.boundingRadius || 50;
@@ -98,6 +107,18 @@ export class SpaceStation {
   }
 
   update(dt) {
+    // Follow orbit body if assigned
+    if (this.orbitBody) {
+      this.mesh.position.copy(this.orbitBody.mesh.position).add(this.offset);
+    } else if (this.orbitDistance > 0 && this.orbitCenter) {
+      this.orbitalAngle += this.orbitSpeed * dt;
+      this.mesh.position.set(
+        this.orbitCenter.x + Math.cos(this.orbitalAngle) * this.orbitDistance,
+        this.orbitCenter.y,
+        this.orbitCenter.z + Math.sin(this.orbitalAngle) * this.orbitDistance
+      );
+    }
+
     // Slow majestic rotation
     if (this.model) {
       this.model.rotation.y += this.rotationSpeed * dt;

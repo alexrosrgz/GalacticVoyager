@@ -71,6 +71,10 @@ export class SolarSystem {
     this.spaceStations = [];
     for (const stationConfig of SPACE_STATIONS) {
       const station = new SpaceStation(stationConfig, scene);
+      if (station.orbitBodyName) {
+        const parent = this.bodies.find(b => b.name === station.orbitBodyName);
+        if (parent) station.orbitBody = parent;
+      }
       this.spaceStations.push(station);
     }
 
