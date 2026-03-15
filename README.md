@@ -28,3 +28,9 @@ Open the URL shown in your terminal (usually `http://localhost:5173`).
 ## Credits
 
 Planet textures by [Solar System Scope](https://www.solarsystemscope.com/textures/) — CC BY 4.0
+
+### 3D Models
+
+- ["Freeport Space Station 2"](https://skfb.ly/oqxqo) by Inditrion Dradnon — [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/)
+- ["Space Station"](https://skfb.ly/ozA6I) by re1monsen — [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/)
+- ["Space Station Modules"](https://skfb.ly/oBurs) by re1monsen — [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/)
