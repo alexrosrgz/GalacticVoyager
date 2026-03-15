@@ -171,6 +171,16 @@ export const SPACE_STATIONS = [
     color: 0x66aaff,
     labelColor: '#66aaff',
   },
+  {
+    name: 'Freeport Station',
+    modelPath: '/models/space-station/freeport_space_station_2.glb',
+    position: { x: 5300, y: 400, z: -2000 },
+    scale: 10,
+    rotationSpeed: 0.04,
+    boundingRadius: 30,
+    color: 0xcc88ff,
+    labelColor: '#cc88ff',
+  },
 ];
 
 // Black Hole (Sagittarius A*)
