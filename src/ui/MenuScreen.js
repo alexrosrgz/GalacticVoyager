@@ -18,7 +18,7 @@ export class MenuScreen {
     this.startScreen.id = 'start-screen';
     this.startScreen.innerHTML = `
       <h1>GALACTIC VOYAGER</h1>
-      <p class="subtitle">Defend the Solar System</p>
+      <p class="subtitle">Defend the Milky Way</p>
       <button id="start-btn">START MISSION</button>
       <p class="controls-info">
         ${controlsText}
@@ -65,6 +65,7 @@ export class MenuScreen {
         font-family: monospace;
       }
       #start-screen h1, #gameover-screen h1 {
+        font-family: "Bruno Ace", monospace;
         font-size: 48px;
         margin-bottom: 10px;
         text-shadow: 0 0 20px rgba(68, 136, 255, 0.8);
